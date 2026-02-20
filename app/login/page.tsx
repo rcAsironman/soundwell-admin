@@ -1,11 +1,37 @@
 'use client'
 
 import { Box, Card, Typography, useTheme, TextField, Button } from "@mui/material"
-import React from "react"
+import React, { useEffect, useState } from "react"
 import Image from "next/image"
-
-
+import { useStore } from "@/store/useStore"
+import { useRouter } from "next/navigation"
 export default function Login() {
+
+
+    const [email, setemail] = useState<null | string>(null);
+    const[password, setPassword] = useState<null | string>(null);
+    const {setEmail,  setToken, clearAuthStorage} = useStore();
+
+
+    const router = useRouter();
+
+
+    useEffect(()=>{
+        clearAuthStorage();
+    },[useStore])
+    const handleLogin = async () => {
+
+        const user = {
+            email: email? email : '',
+            token: 'jdsjdskksklslslssklkslsls12343ndmmdmd@',
+            firstName: 'Karthik',
+            lastName: 'Mangineni'
+        }
+
+        setEmail(email? email : '');
+        setToken(user.token);
+        router.replace('/HomePage');
+    }
 
     const theme = useTheme();
     return (
@@ -47,18 +73,28 @@ export default function Login() {
                 }}
             >
                 <Typography sx={{
-                    fontSize: 50,
+                    fontSize: 28,
                     fontWeight: 700,
                     color: theme.palette.primary.main,
                     position: 'absolute',
                     top: 40,
                     left: 40
                 }}>SoundWell</Typography>
+                <Typography
+                sx={{
+                    color: 'black',
+                    position: 'absolute',
+                    top: 80,
+                    left: 40,
+                    fontSize: 9,
+                    fontWeight: 700,
+                }}
+                >This Application is only for Admin(s)/Researcher(s)</Typography>
                 <Card
                     sx={{
 
                         height: '60%',
-                        width: "60%",
+                        width: "70%",
                         borderRadius: 10,
                         paddingLeft: 5,
                         paddingTop: 5
@@ -90,25 +126,35 @@ export default function Login() {
 
                         {/**Email */}
                         <TextField 
+
                         sx={{
-                           width: '70%'
+                           width: '88%'
                             
-                        }} id="outlined-basic" label="Email" variant="outlined" />
+                        }} id="outlined-basic" label="Email" variant="outlined" 
+                        type="email"
+                        onChange={(e) => setemail(e.target.value)}
+                        value={email}
+                        />
 
                         {/**Password */}
                          <TextField 
                         sx={{
-                           width: '70%'
+                           width: '88%'
                             
-                        }} id="outlined-basic" label="Password" variant="outlined" />
+                        }} id="outlined-basic" label="Password" variant="outlined" 
+                        type="password"
+                        onChange={(e) => setPassword(e.target.value)}
+                        />
                     </Box>
 
-                    <Button  
+                        <Button  
                     sx={{
-                        width: '80%',
+                        width: '88%',
                         marginTop: 10
                     }}
-                    variant="contained">
+                    variant="contained"
+                    onClick={handleLogin}
+                    >
                         <Typography 
                         sx={{
                             fontWeight: 600,
@@ -118,6 +164,7 @@ export default function Login() {
                             Sign In
                         </Typography>
                     </Button>
+                  
                 </Card>
             </Box>
         </Box>
