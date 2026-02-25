@@ -9,6 +9,7 @@ import ThemeRegistry from "@/ThemeRegistry";
 import SideBar from "./components/SideBar";
 import { useEffect, useState } from "react";
 import { useStore } from "@/store/useStore";
+import { Typography } from "@mui/material";
 
 // export const metadata: Metadata = {
 //   title: "Soundwell",
@@ -18,7 +19,7 @@ import { useStore } from "@/store/useStore";
 export default function RootLayout({ children }: { children: React.ReactNode }) {
 
   const [user, setUser] = useState<any>(null);
-  const {email, token} = useStore();
+  const {email, token, firstName} = useStore();
 
   useEffect(()=>{
     const user = localStorage.getItem('user');

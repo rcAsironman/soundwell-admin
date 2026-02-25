@@ -16,8 +16,8 @@ import { Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { usePathname,useRouter } from 'next/navigation';
 import CreateIcon from '@mui/icons-material/Create';
-
-
+import EditNoteIcon from '@mui/icons-material/EditNote';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 const optionSelectedOrNot = {
     '&.Mui-selected': {
@@ -115,25 +115,37 @@ export default function NavBar() {
             </ListItemButton>
             <Collapse in={openSection === 'experiment'} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
+
+                     <ListItemButton
+                        selected={pathName == '/createPhrase'}
+                        onClick={() => handleSelectOption('createPhrase')}
+                        sx={[optionSelectedOrNot, { pl: 4 }]}
+                    >
+                        <ListItemIcon>
+                            <CreateIcon sx={{color: pathName == '/createPhrase' ? 'black' : 'white'}} />
+                        </ListItemIcon>
+                        <ListItemText primary="Create Phrase" />
+                    </ListItemButton>
+
                     <ListItemButton
                         selected={pathName == '/createExperiment'}
                         onClick={() => handleSelectOption('createExperiment')}
                         sx={[optionSelectedOrNot, { pl: 4 }]}
                     >
                         <ListItemIcon>
-                            <PersonAddIcon sx={{color: pathName == '/createExperiment' ? 'black' : 'white'}} />
+                            <CreateIcon sx={{color: pathName == '/createExperiment' ? 'black' : 'white'}} />
                         </ListItemIcon>
                         <ListItemText primary="Create Experiment" />
                     </ListItemButton>
 
 
                     <ListItemButton
-                        selected={pathName == '/createAdmin'}
-                        onClick={() => handleSelectOption('createAdmin')}
+                        selected={pathName == '/updateExperiment'}
+                        onClick={() => handleSelectOption('updateExperiment')}
                         sx={[optionSelectedOrNot, { pl: 4 }]}
                     >
                         <ListItemIcon>
-                            <PersonAddIcon sx={{color: pathName == '/createAdmin' ? 'black' : 'white'}} />
+                            <EditNoteIcon sx={{color: pathName == '/updateExperiment' ? 'black' : 'white'}} />
                         </ListItemIcon>
                         <ListItemText primary="Update Experiment" />
                     </ListItemButton>
@@ -144,7 +156,7 @@ export default function NavBar() {
                         sx={[optionSelectedOrNot, { pl: 4 }]}
                     >
                         <ListItemIcon>
-                            <PersonAddIcon sx={{color: pathName == '/deleteExperiment' ? 'black' : 'white'}} />
+                            <DeleteIcon sx={{color: pathName == '/deleteExperiment' ? 'black' : 'white'}} />
                         </ListItemIcon>
                         <ListItemText primary="Delete Experiment" />
                     </ListItemButton>

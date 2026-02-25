@@ -1,10 +1,12 @@
 'use client'
 import { Widgets } from "@mui/icons-material";
 import { Box, Card, TextField, Typography, Chip, Button } from "@mui/material";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import SearchPhrase from "../components/SearchPhrase";
 import { UserType } from "../components/Search";
 import SearchUser from "../components/Search";
+import { useStore } from "@/store/useStore";
+import { inputFieldCss } from "../css";
 
 
 const titleCss = {
@@ -32,10 +34,32 @@ export default function CreateExperiment() {
     const [userIds, setUserIds] = useState<number[]>([]);
     const [selectedPhrases, setSelectedPhrases] = useState<PhraseType[]>([]);
     const [phraseResult, setPhraseResult] = useState<PhraseType[]>([]);
-    const [userResult, setUserResult] = useState<UserType[]>([])
     const [selectedUsers, setSelectedUsers] = useState<UserType[]>([])
+    const [searchText, setSearchText] = useState('');
+    const [userResult, setUserResult] = useState<UserType[]>([])
+    const searchResultRef = useRef<HTMLElement | null>(null);
+    const { firstName, lastName } = useStore();
 
 
+    useEffect(() => {
+
+        const handleClick = (event: MouseEvent) => {
+            if (searchResultRef.current && !searchResultRef.current.contains(event.target as Node)) {
+                clearSearchResult();
+            }
+        }
+
+        document.addEventListener('mousedown', handleClick);
+
+        return () => {
+            document.removeEventListener('mousedown', handleClick);
+        }
+
+    }, [])
+    const clearSearchResult = () => {
+        setUserResult([]);
+        setSearchText('');
+    }
 
     const addUser = (user: UserType) => {
         setSelectedUsers((prev) =>
@@ -58,9 +82,6 @@ export default function CreateExperiment() {
 
     }
 
-    const clearSearchResult = () => {
-        setPhraseResult([]);
-    }
     const clearUserSearchResult = () => setUserResult([])
     const clearSelectedUsers = () => setSelectedUsers([])
     const clearSelectedPhrases = () => setSelectedPhrases([])
@@ -81,6 +102,11 @@ export default function CreateExperiment() {
             bgcolor: '#F9F6EE',
             color: 'black',
             padding: 2,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'start',
+            alignItems: 'center',
+            overflowY: 'auto'
         }}
     >
         <Typography sx={{ fontSize: 18, fontWeight: 600 }}>Create new experiment</Typography>
@@ -107,14 +133,18 @@ export default function CreateExperiment() {
 
         <Box sx={{
             height: '90%',
+            width: '100%',
             marginTop: 2,
-
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'start',
+            alignItems: 'center'
         }}>
             <TextField
                 type="text"
                 placeholder="Experiment Name here"
                 label="Experiment Name"
-                sx={{ width: '60%', marginBottom: 2 }}
+                sx={[inputFieldCss]}
                 size="small"
                 onChange={(e) => setExperimentName(e.target.value)}
             />
@@ -123,7 +153,7 @@ export default function CreateExperiment() {
                 type="text"
                 placeholder="Experiment Code here"
                 label="Experiment Code"
-                sx={{ width: '60%', marginBottom: 2 }}
+                sx={[inputFieldCss]}
                 size="small"
                 onChange={(e) => setExperimentName(e.target.value)}
             />
@@ -131,8 +161,10 @@ export default function CreateExperiment() {
             <Typography sx={{ fontSize: 18, fontWeight: 600 }}>Search Phrases</Typography>
 
             <Box sx={{
-                marginTop: '2%',
-                width: '80%',
+                marginTop: '1%',
+                marginLeft: '15%',
+                width: '78%',
+
             }}>
                 <SearchPhrase onResult={setPhraseResult} />
                 <Box
@@ -240,10 +272,10 @@ export default function CreateExperiment() {
             </Box>
 
 
-            <Typography sx={{ fontSize: 18, fontWeight: 600, marginTop: 5}}>Search Users</Typography>
+            <Typography sx={{ fontSize: 18, fontWeight: 600, marginTop: 5 }}>Search Users</Typography>
 
-            <Box sx={{ marginTop: '2%', width: '80%' }}>
-                <SearchUser onResult={setUserResult} />
+            <Box sx={{ marginTop: '0%', width: '78%',  marginLeft: '15%', }}>
+                < SearchUser value={searchText} onChange={setSearchText} onResult={setUserResult} />
 
                 <Box sx={{ display: 'flex' }}>
                     {/* Search Result */}

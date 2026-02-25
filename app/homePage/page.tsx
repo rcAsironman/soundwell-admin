@@ -1,9 +1,11 @@
 'use client'
-import { Box, Button } from "@mui/material"
+import { Box, Button, Typography } from "@mui/material"
 import ExperimentWidget from "../components/ExperimentWidget"
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import SearchUser from '../components/Search'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import { useStore } from "@/store/useStore";
+
 
 type UserType = {
     id: number
@@ -17,11 +19,27 @@ export default function HomePage() {
 
     const [searchText, setSearchText] = useState('');
     const [userResults, setUserResults] = useState<UserType[]>([])
+    const searchResultRef = useRef<HTMLElement | null>(null);
+    const {firstName, lastName} = useStore();
 
+    useEffect(()=>{
 
+        const handleClick = (event: MouseEvent) => {
+            if(searchResultRef.current && !searchResultRef.current.contains(event.target as Node)){
+               clearSearchResult();
+            }
+        }
 
+        document.addEventListener('mousedown', handleClick);
+
+        return() => {
+            document.removeEventListener('mousedown', handleClick);
+        }
+
+    },[])
     const clearSearchResult = () => {
         setUserResults([]);
+        setSearchText('');
     }
 
     return (
@@ -30,8 +48,10 @@ export default function HomePage() {
             height: '100%',
             width: '100%',
             padding: 2,
-            color: 'black'
+            color: 'black',
         }}>
+            <Typography style={{fontSize: 20,fontWeight: 600}}>Hello,</Typography>
+            <Typography style={{fontWeight: 600}}>{firstName}, {lastName}</Typography>
             <Box sx={{
                 display: 'flex',
                 justifyContent: 'space-between',
@@ -39,17 +59,19 @@ export default function HomePage() {
                 maxWidth: '100%',
 
             }}>
-                < SearchUser onResult={setUserResults} />
+                < SearchUser value={searchText} onChange={setSearchText} onResult={setUserResults} />
 
                 {
                     userResults.length > 0 && (
-                        <Box sx={{
+                        <Box 
+                        ref={searchResultRef}
+                        sx={{
                             position: 'absolute',
                             bgcolor: 'white',
                             width: '52%',
                             height: 300,
                             zIndex: 1,
-                            top: 70,
+                            top: 120,
                             overflowY: 'auto',
                             borderRadius: 2,
 

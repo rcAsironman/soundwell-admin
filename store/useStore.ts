@@ -8,8 +8,8 @@ type Store = {
     setToken: (newToken: string) => void
     firstName: string
     setFirstName: (name: string) => void
-    //   lastName: string
-    //   setLastName: (name: string) => void
+    lastName: string
+    setLastName: (name: string) => void
 
     clearAuthStorage: () => void
 
@@ -27,11 +27,15 @@ export const useStore = create<Store>()(
             firstName: '',
             setFirstName: (newFirstName) => set({ firstName: newFirstName }),
 
+            lastName: '',
+            setLastName: (newLastName) => set({ lastName: newLastName }),
+
             clearAuthStorage: () => {
                 set({
                     email: '',
                     token: '',
                     firstName: '',
+                    lastName: ''
                 })
 
                 //Clear persisted storage

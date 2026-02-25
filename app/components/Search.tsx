@@ -13,21 +13,15 @@ export type UserType = {
 }
 
 type SearchUserProps = {
+  value: string
+  onChange: (value: string) => void
   onResult: (result: UserType[]) => void
 }
 
-const SearchUser = ({ onResult }: SearchUserProps) => {
-  const [query, setQuery] = useState('')
-
-  // Clear results when query becomes empty
-  useEffect(() => {
-    if (query.trim() === '') {
-      onResult([])
-    }
-  }, [query, onResult])
-
+const SearchUser = ({ value, onChange, onResult }: SearchUserProps) => {
+ 
   const handleSearch = async () => {
-    // 🔥 Replace with real API call later
+    //Replace with API call
 
     const data: UserType[] = [
       {
@@ -35,168 +29,168 @@ const SearchUser = ({ onResult }: SearchUserProps) => {
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 4,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 5,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 6,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 7,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 8,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 9,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 1,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 1,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 1,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 1,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
       {
         id: 1,
         firstName: 'John',
         lastName: 'Doe',
         username: 'john_doe',
-        email: `john_${query}@example.com`,
+        email: `john_${value}@example.com`,
       },
       {
         id: 2,
         firstName: 'Jane',
         lastName: 'Smith',
         username: 'jane_smith',
-        email: `jane_${query}@example.com`,
+        email: `jane_${value}@example.com`,
       },
       {
         id: 3,
         firstName: 'Alex',
         lastName: 'Brown',
         username: 'alex_brown',
-        email: `alex_${query}@example.com`,
+        email: `alex_${value}@example.com`,
       },
     ]
 
@@ -212,8 +206,8 @@ const SearchUser = ({ onResult }: SearchUserProps) => {
       }}
     >
       <TextField
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
         placeholder="Search user..."
         size="small"
         sx={{ width: '90%' }}

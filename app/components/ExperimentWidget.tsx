@@ -3,7 +3,6 @@
 import { Card, Typography } from "@mui/material"
 
 
-
 const tagCss = {
     color: 'black',
     fontSize: 14,
@@ -36,7 +35,7 @@ export default function ExperimentWidget() {
         <Card
 
             sx={{
-                height: '50%',
+                height: 400,
                 width: '28%',
                 bgcolor: 'white',
                 borderRadius: 6,

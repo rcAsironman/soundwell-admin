@@ -36,9 +36,10 @@ export default function CreateAdminPage() {
         justifyContent: 'center',
         alignItems: 'center',
         height: '100vh',
+        width: '100%',
       }}
     >
-      <Card sx={{ width: 400 }}>
+      <Card sx={{ width: 600, height: 400 }}>
         <CardContent>
           <Typography variant="h5" gutterBottom>
             Create Admin
@@ -79,8 +80,12 @@ export default function CreateAdminPage() {
               required
             />
 
-            <Button type="submit" variant="contained">
-              Create Admin
+            <Button type="submit" variant="contained" sx={{
+              height: 50
+            }}>
+              <Typography sx={{fontSize: 12}}>
+                Create Admin
+              </Typography>
             </Button>
           </Box>
         </CardContent>

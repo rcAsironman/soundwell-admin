@@ -1,36 +1,72 @@
 'use client'
 
-import { Box, Card, Typography, useTheme, TextField, Button } from "@mui/material"
+import { Box, Card, Typography, useTheme, TextField, Button, Alert } from "@mui/material"
 import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import { useStore } from "@/store/useStore"
 import { useRouter } from "next/navigation"
+import { baseUrl } from '@/constants'
+
+
+
+
 export default function Login() {
 
 
-    const [email, setemail] = useState<null | string>(null);
-    const[password, setPassword] = useState<null | string>(null);
-    const {setEmail,  setToken, clearAuthStorage} = useStore();
+    const [email, setemail] = useState<string>("");
+    const [password, setPassword] = useState<string>("");
+    const { setEmail, setToken, clearAuthStorage, setFirstName, setLastName } = useStore();
 
 
     const router = useRouter();
 
 
-    useEffect(()=>{
+    useEffect(() => {
         clearAuthStorage();
-    },[useStore])
+    }, [useStore])
+
+    
     const handleLogin = async () => {
 
+
+        let data;
+        try {
+            const response = await fetch(`${baseUrl}/admin/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            });
+
+            if (!response.ok) {
+                const res = await response.json();
+                throw new Error(res.message || 'Network response was not ok')
+            }
+
+
+            data = await response.json();
+            console.log(data);
+            setEmail(email ? email : '');
+            setToken(data?.token);
+            setFirstName(data?.result?.firstName);
+            setLastName(data?.result?.lastName);
+            router.replace('/homePage');
+
+        }
+        catch (error) {
+            window.alert(JSON.stringify(error));
+        }
+
         const user = {
-            email: email? email : '',
+            email: email ? email : '',
             token: 'jdsjdskksklslslssklkslsls12343ndmmdmd@',
             firstName: 'Karthik',
             lastName: 'Mangineni'
         }
 
-        setEmail(email? email : '');
-        setToken(user.token);
-        router.replace('/HomePage');
+
     }
 
     const theme = useTheme();
@@ -81,14 +117,14 @@ export default function Login() {
                     left: 40
                 }}>SoundWell</Typography>
                 <Typography
-                sx={{
-                    color: 'black',
-                    position: 'absolute',
-                    top: 80,
-                    left: 40,
-                    fontSize: 9,
-                    fontWeight: 700,
-                }}
+                    sx={{
+                        color: 'black',
+                        position: 'absolute',
+                        top: 80,
+                        left: 40,
+                        fontSize: 9,
+                        fontWeight: 700,
+                    }}
                 >This Application is only for Admin(s)/Researcher(s)</Typography>
                 <Card
                     sx={{
@@ -115,56 +151,56 @@ export default function Login() {
                     </Typography>
 
                     <Box
-                    sx={{
-                        display:"flex",
-                        flexDirection: 'column',
-                        justifyContent: 'space-evenly',
-                        height: '40%'
+                        sx={{
+                            display: "flex",
+                            flexDirection: 'column',
+                            justifyContent: 'space-evenly',
+                            height: '40%'
 
-                    }}
+                        }}
                     >
 
                         {/**Email */}
-                        <TextField 
+                        <TextField
 
-                        sx={{
-                           width: '88%'
-                            
-                        }} id="outlined-basic" label="Email" variant="outlined" 
-                        type="email"
-                        onChange={(e) => setemail(e.target.value)}
-                        value={email}
+                            sx={{
+                                width: '88%'
+
+                            }} id="outlined-basic" label="Email" variant="outlined"
+                            type="email"
+                            onChange={(e) => setemail(e.target.value)}
+                            value={email}
                         />
 
                         {/**Password */}
-                         <TextField 
-                        sx={{
-                           width: '88%'
-                            
-                        }} id="outlined-basic" label="Password" variant="outlined" 
-                        type="password"
-                        onChange={(e) => setPassword(e.target.value)}
+                        <TextField
+                            sx={{
+                                width: '88%'
+
+                            }} id="outlined-basic" label="Password" variant="outlined"
+                            type="password"
+                            onChange={(e) => setPassword(e.target.value)}
                         />
                     </Box>
 
-                        <Button  
-                    sx={{
-                        width: '88%',
-                        marginTop: 10
-                    }}
-                    variant="contained"
-                    onClick={handleLogin}
-                    >
-                        <Typography 
+                    <Button
                         sx={{
-                            fontWeight: 600,
-                            fontSize: 15
+                            width: '88%',
+                            marginTop: 10
                         }}
+                        variant="contained"
+                        onClick={handleLogin}
+                    >
+                        <Typography
+                            sx={{
+                                fontWeight: 600,
+                                fontSize: 15
+                            }}
                         >
                             Sign In
                         </Typography>
                     </Button>
-                  
+
                 </Card>
             </Box>
         </Box>
