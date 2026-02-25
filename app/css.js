@@ -1,3 +1,5 @@
+import theme from "./theme"
+
 export const titleCss = {
     fontSize: 20,
     color: 'black',
@@ -9,3 +11,25 @@ export const inputFieldCss={
     height: 50,
 
 }
+
+export const backgroundContentCss = {
+    width: '100vw',
+    height: '100vh',
+    display: 'block',
+    overflowY: 'auto',
+    bgcolor: '#F9F6EE',
+    padding: '2%'
+}
+
+export const searchButtonBgColorCss = {
+    bgcolor: theme.palette.primary.main,
+
+}
+
+export const searchTextCss = {
+    fontSize: 12,
+    fontWeight: 500,
+    color: 'white',
+    width: 80
+}
+

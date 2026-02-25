@@ -5,6 +5,7 @@ import { useState, useRef, useEffect } from "react";
 import SearchUser from '../components/Search'
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useStore } from "@/store/useStore";
+import { backgroundContentCss } from "../css";
 
 
 type UserType = {
@@ -43,13 +44,7 @@ export default function HomePage() {
     }
 
     return (
-        <Box sx={{
-            bgcolor: '#F9F6EE',
-            height: '100%',
-            width: '100%',
-            padding: 2,
-            color: 'black',
-        }}>
+        <Box sx={backgroundContentCss}>
             <Typography style={{fontSize: 20,fontWeight: 600}}>Hello,</Typography>
             <Typography style={{fontWeight: 600}}>{firstName}, {lastName}</Typography>
             <Box sx={{

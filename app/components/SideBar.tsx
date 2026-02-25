@@ -11,7 +11,7 @@ export default function SideBar(){
         sx={{
             bgcolor: theme.palette.primary.main,
             height: '100vh',
-            width: '100%',
+            width: '20vw',
             padding: 2
         }}
         >
