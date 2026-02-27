@@ -13,8 +13,9 @@ import {
 } from '@mui/material'
 import { useToast } from '../components/ToastProvider';
 
-import {baseUrl} from '@/constants'
+import { baseUrl } from '@/constants'
 import { useStore } from "@/store/useStore"
+import { backgroundContentCss } from '../css';
 
 
 export default function CreateUser() {
@@ -62,14 +63,14 @@ export default function CreateUser() {
     try {
       const response = await fetch(`${baseUrl}/admin/create-user`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${token}`,
-         },
+        },
         body: JSON.stringify(payload),
       });
 
-      if(!response.ok){
+      if (!response.ok) {
         const res = await response.json();
         throw new Error(res.message || 'Network response was not ok')
       };
@@ -119,75 +120,72 @@ SoundWell
 
   return (
     <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'start',
-        height: '100vh',
-      }}
+      sx={[backgroundContentCss]}
     >
       <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-around' }}>
-        <Card sx={{ width: '60%', marginTop: 10 }}>
-          <CardContent>
-            <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
-              Create User
-            </Typography>
+        <center style={{width: '100%'}}>
+          <Card sx={{ width: '60%', marginTop: 10, borderRadius: 3, py:4 }}>
+            <CardContent>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+                Create User
+              </Typography>
 
-            <Box
-              component="form"
-              onSubmit={handleSubmit}
-              sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 5 }}
-            >
-              <TextField
-                label="First Name"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                required
-              />
-
-              <TextField
-                label="Last Name"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-
-              <TextField
-                label="Email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-
-              <TextField
-                label="Date of Birth"
-                type="date"
-                InputLabelProps={{ shrink: true }}
-                value={dob}
-                onChange={(e) => setDob(e.target.value)}
-                required
-              />
-
-              <TextField
-                select
-                label="Gender"
-                value={gender}
-                onChange={(e) => setGender(e.target.value)}
-                required
+              <Box
+                component="form"
+                onSubmit={handleSubmit}
+                sx={{ display: 'flex', flexDirection: 'column', gap: 2, mt: 5 }}
               >
-                <MenuItem value="MALE">Male</MenuItem>
-                <MenuItem value="FEMALE">Female</MenuItem>
-              </TextField>
+                <TextField
+                  label="First Name"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  required
+                />
 
-              <Button type="submit" variant="contained" sx={{ height: 30 }}>
-                <Typography sx={{ fontSize: 12 }}>
-                  Create Admin
-                </Typography>
-              </Button>
-            </Box>
-          </CardContent>
-        </Card>
+                <TextField
+                  label="Last Name"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  required
+                />
+
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+
+                <TextField
+                  label="Date of Birth"
+                  type="date"
+                  InputLabelProps={{ shrink: true }}
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  required
+                />
+
+                <TextField
+                  select
+                  label="Gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  required
+                >
+                  <MenuItem value="MALE">Male</MenuItem>
+                  <MenuItem value="FEMALE">Female</MenuItem>
+                </TextField>
+
+                <Button type="submit" variant="contained" sx={{ height: 50 }}>
+                  <Typography sx={{ fontSize: 12 }}>
+                    Create User
+                  </Typography>
+                </Button>
+              </Box>
+            </CardContent>
+          </Card>
+        </center>
 
         {
           textToCopy.length > 0 && (

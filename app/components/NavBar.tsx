@@ -40,9 +40,9 @@ export default function NavBar() {
 
 
     const handleClick = (section: string) => {
-        
-        setOpenSection((prev) => (prev == section ? prev == 'update'? 'phrase' : '' : section));
-        
+
+        setOpenSection((prev) => (prev == section ? prev == 'update' ? 'phrase' : '' : section));
+
     };
 
 
@@ -131,42 +131,18 @@ export default function NavBar() {
                     </ListItemButton>
 
 
-                    <ListItemButton onClick={() => handleClick('update')}
-                        sx={{pl: 4}}
-                        >
+                    <ListItemButton
+                        selected={pathName == '/updatePhrase'}
+                        onClick={() => handleSelectOption('updatePhrase')}
+                        sx={[optionSelectedOrNot, { pl: 4 }]}
+                    >
                         <ListItemIcon>
-                            <EditNoteIcon sx={{ color: 'white' }} />
+                            <PersonAddIcon sx={{ color: pathName == '/updatePhrase' ? 'black' : 'white' }} />
                         </ListItemIcon>
-                        <ListItemText primary="Update" />
-                        {openSection === 'update' ? <ExpandLess /> : <ExpandMore />}
+                        <ListItemText primary="Update Phrase" />
                     </ListItemButton>
-                    
-                        <Collapse in={openSection === 'update'} timeout="auto" unmountOnExit >
-                            <List component="div" disablePadding sx={{pl: 4}}>
-                                <ListItemButton
-                                    selected={pathName == '/updatePhrase'}
-                                    onClick={() => handleSelectOption('updatePhrase')}
-                                    sx={[optionSelectedOrNot, { pl: 4 }]}
-                                >
-                                    <ListItemIcon>
-                                        <PersonAddIcon sx={{ color: pathName == '/updatePhrase' ? 'black' : 'white' }} />
-                                    </ListItemIcon>
-                                    <ListItemText primary="Update Phrase" />
-                                </ListItemButton>
 
 
-                                <ListItemButton
-                                    selected={pathName == '/createAdmin'}
-                                    onClick={() => handleSelectOption('createAdmin')}
-                                    sx={[optionSelectedOrNot, { pl: 4 }]}
-                                >
-                                    <ListItemIcon>
-                                        <PersonAddIcon sx={{ color: pathName == '/createAdmin' ? 'black' : 'white' }} />
-                                    </ListItemIcon>
-                                    <ListItemText primary="Update Phrase Code" />
-                                </ListItemButton>
-                            </List>
-                        </Collapse>
 
 
 

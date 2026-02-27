@@ -9,6 +9,7 @@ import {
   TextField,
   Button,
 } from '@mui/material'
+import { backgroundContentCss } from '../css'
 
 export default function CreateAdminPage() {
   const [firstName, setFirstName] = useState('')
@@ -31,19 +32,14 @@ export default function CreateAdminPage() {
 
   return (
     <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        height: '100vh',
-        width: '100%',
-      }}
+      sx={[backgroundContentCss,]}
     >
-      <Card sx={{ width: 600, height: 400 }}>
+     <center>
+       <Card sx={{ width: 650, height: 500, mt: 10, borderRadius: 3, py:4 }}>
         <CardContent>
-          <Typography variant="h5" gutterBottom>
-            Create Admin
-          </Typography>
+          <Typography variant="h5" gutterBottom sx={{ fontWeight: 600 }}>
+              Create Admin
+            </Typography>
 
           <Box
             component="form"
@@ -90,6 +86,7 @@ export default function CreateAdminPage() {
           </Box>
         </CardContent>
       </Card>
+     </center>
     </Box>
   )
 }

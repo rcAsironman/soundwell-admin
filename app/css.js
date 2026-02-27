@@ -13,12 +13,13 @@ export const inputFieldCss={
 }
 
 export const backgroundContentCss = {
-    width: '100vw',
+    width: '80vw',
     height: '100vh',
     display: 'block',
     overflowY: 'auto',
     bgcolor: '#F9F6EE',
-    padding: '2%'
+    padding: '2%',
+    color: 'black'
 }
 
 export const searchButtonBgColorCss = {
