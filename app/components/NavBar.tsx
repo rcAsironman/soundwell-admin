@@ -12,7 +12,7 @@ import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import StarBorder from '@mui/icons-material/StarBorder';
 import { useState } from 'react';
-import { Typography } from '@mui/material';
+import { Button, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { usePathname, useRouter } from 'next/navigation';
 import CreateIcon from '@mui/icons-material/Create';
@@ -212,6 +212,7 @@ export default function NavBar() {
 
             {/**Help Center */}
 
+            
         </List>
     );
 }

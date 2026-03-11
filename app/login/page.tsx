@@ -5,7 +5,6 @@ import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import { useStore } from "@/store/useStore"
 import { useRouter } from "next/navigation"
-import { baseUrl } from '@/constants'
 
 
 
@@ -16,12 +15,13 @@ export default function Login() {
     const [email, setemail] = useState<string>("");
     const [password, setPassword] = useState<string>("");
     const { setEmail, setToken, clearAuthStorage, setFirstName, setLastName } = useStore();
-
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
     const router = useRouter();
 
 
     useEffect(() => {
+        console.log("This is base url : ", BASE_URL);
         clearAuthStorage();
     }, [useStore])
 
@@ -31,7 +31,7 @@ export default function Login() {
 
         let data;
         try {
-            const response = await fetch(`${baseUrl}/admin/login`, {
+            const response = await fetch(`${BASE_URL}/admin/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({

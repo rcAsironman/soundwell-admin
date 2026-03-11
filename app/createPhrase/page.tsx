@@ -3,13 +3,12 @@ import { Box, Button, TextField, Typography, Card, CardContent } from "@mui/mate
 import { titleCss, inputFieldCss, backgroundContentCss } from "@/app/css";
 import theme from "../theme";
 import { useState } from "react";
-import { baseUrl } from "@/constants";
 import { useToast } from "../components/ToastProvider";
 import { useStore } from "@/store/useStore";
 
 export default function CreatePhrase() {
 
-
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
     const [code, setCode] = useState<string>('');
     const [phrase, setPhrase] = useState<string>('');
     const { token } = useStore();
@@ -22,7 +21,7 @@ export default function CreatePhrase() {
             phrase
         }
 
-        const response = await fetch(`${baseUrl}/phrase/create-phrase`, {
+        const response = await fetch(`${BASE_URL}/phrase/create-phrase`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

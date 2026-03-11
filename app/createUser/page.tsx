@@ -13,13 +13,13 @@ import {
 } from '@mui/material'
 import { useToast } from '../components/ToastProvider';
 
-import { baseUrl } from '@/constants'
 import { useStore } from "@/store/useStore"
 import { backgroundContentCss } from '../css';
 
 
 export default function CreateUser() {
 
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const theme = useTheme();
   const { showToast } = useToast();
   const [firstName, setFirstName] = useState('')
@@ -61,7 +61,7 @@ export default function CreateUser() {
     let data;
 
     try {
-      const response = await fetch(`${baseUrl}/admin/create-user`, {
+      const response = await fetch(`${BASE_URL}/admin/create-user`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

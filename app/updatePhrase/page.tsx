@@ -11,7 +11,6 @@ import {
 } from '@/app/css';
 
 import { useToast } from '../components/ToastProvider';
-import { baseUrl } from '@/constants';
 import { useStore } from '@/store/useStore';
 
 type SearchResultType = {
@@ -40,6 +39,8 @@ async function safeReadError(res: Response): Promise<string> {
 }
 
 export default function UpdatePhrase() {
+
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { showToast } = useToast();
   const { token } = useStore();
 
@@ -79,7 +80,7 @@ export default function UpdatePhrase() {
 
     try {
       const response = await fetch(
-        `${baseUrl}/phrase/fetchByNameOrCode?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`,
+        `${BASE_URL}/phrase/fetchByNameOrCode?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
@@ -155,7 +156,7 @@ export default function UpdatePhrase() {
     try {
       // Update phrase text (and keep phraseCode in sync)
       if (phraseChanged) {
-        const res = await fetch(`${baseUrl}/phrase/update-phrase`, {
+        const res = await fetch(`${BASE_URL}/phrase/update-phrase`, {
           method: 'PUT',
           headers: {
             accept: '*/*',
@@ -177,7 +178,7 @@ export default function UpdatePhrase() {
 
       // Update code (validate duplicates)
       if (codeChanged) {
-        const res = await fetch(`${baseUrl}/phrase/update-phrase-code`, {
+        const res = await fetch(`${BASE_URL}/phrase/update-phrase-code`, {
           method: 'PUT',
           headers: {
             accept: '*/*',

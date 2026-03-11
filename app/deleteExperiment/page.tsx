@@ -15,7 +15,7 @@ import { useStore } from '@/store/useStore';
 
 type SearchResultType = {
   id: number;
-  phrase: string;
+  experimentName: string;
   code: string;
 };
 
@@ -32,7 +32,8 @@ async function safeReadError(res: Response): Promise<string> {
   }
 }
 
-export default function DeletePhrase() {
+export default function DeleteExperiment() {
+
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { showToast } = useToast();
   const { token } = useStore();
@@ -42,19 +43,18 @@ export default function DeletePhrase() {
   const [page] = useState(1);
   const [searchResult, setSearchResult] = useState<SearchResultType[]>([]);
   const [openDeleteModal, setOpenDeleteModal] = useState(false);
-  const [selectedPhrase, setSelectedPhrase] = useState<SearchResultType | null>(null);
+  const [selectedExperiment, setSelectedExperiment] = useState<SearchResultType | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const mouseEventRef = useRef<HTMLDivElement | null>(null);
 
-  // For now deletion is disabled
+  // Deletion disabled initially
   const deletionDisabled = true;
 
   useEffect(() => {
     if (deletionDisabled) {
-      showToast('Phrase deletion is temporarily disabled.', 'error', 3000);
+      showToast('Experiment deletion is temporarily disabled.', 'error', 3000);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const clearResult = () => {
@@ -71,10 +71,10 @@ export default function DeletePhrase() {
 
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearch = async () => {
+
     if (deletionDisabled) return;
 
     if (!query.trim()) {
@@ -83,18 +83,15 @@ export default function DeletePhrase() {
     }
 
     try {
+
       const response = await fetch(
-        `${BASE_URL}/phrase/fetchByNameOrCode?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`,
+        `${BASE_URL}/experiment/fetchByName?query=${encodeURIComponent(query)}&limit=${limit}&page=${page}`,
         {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
-      if (!response.ok) {
-        throw new Error();
-      }
+      if (!response.ok) throw new Error();
 
       const data = await response.json();
 
@@ -102,38 +99,39 @@ export default function DeletePhrase() {
         ? data.map((x: any) => ({
             id: Number(x.id),
             code: x.code ?? '',
-            phrase: x.phrase ?? '',
+            experimentName: x.experimentName ?? '',
           }))
         : [];
 
       setSearchResult(list);
 
-      if (!list.length) {
-        showToast('Result Not Found', 'error', 3000);
-      }
+      if (!list.length) showToast('Result Not Found', 'error', 3000);
+
     } catch {
-      showToast('Result Not Found', 'error', 3000);
+      showToast('Search failed', 'error', 3000);
     }
   };
 
   const openDelete = (item: SearchResultType) => {
     if (deletionDisabled) return;
-    setSelectedPhrase(item);
+    setSelectedExperiment(item);
     setOpenDeleteModal(true);
   };
 
   const closeDelete = () => {
+    setSelectedExperiment(null);
     setOpenDeleteModal(false);
-    setSelectedPhrase(null);
   };
 
   const handleDelete = async () => {
-    if (!selectedPhrase || deletionDisabled) return;
+
+    if (!selectedExperiment || deletionDisabled) return;
 
     setDeleting(true);
 
     try {
-      const response = await fetch(`${BASE_URL}/phrase/delete-phrase`, {
+
+      const response = await fetch(`${BASE_URL}/experiment/delete-experiment`, {
         method: 'DELETE',
         headers: {
           accept: '*/*',
@@ -141,27 +139,34 @@ export default function DeletePhrase() {
           Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
-          id: selectedPhrase.id,
+          id: selectedExperiment.id,
         }),
       });
 
       if (!response.ok) {
         const msg = await safeReadError(response);
-        throw new Error(msg || 'Failed to delete phrase');
+        throw new Error(msg || 'Failed to delete experiment');
       }
 
-      setSearchResult((prev) => prev.filter((item) => item.id !== selectedPhrase.id));
+      setSearchResult(prev => prev.filter(x => x.id !== selectedExperiment.id));
 
-      showToast('Phrase deleted successfully', 'success', 2500);
+      showToast('Experiment deleted successfully', 'success', 2500);
+
       closeDelete();
+
     } catch (error: any) {
-      showToast(error?.message || 'Failed to delete phrase', 'error', 3000);
+
+      showToast(error?.message || 'Delete failed', 'error', 3000);
+
     } finally {
+
       setDeleting(false);
+
     }
   };
 
   const SearchResultList = memo(({ data }: { data: SearchResultType[] }) => {
+
     if (!data.length) return null;
 
     return (
@@ -179,6 +184,7 @@ export default function DeletePhrase() {
           pointerEvents: deletionDisabled ? 'none' : 'auto',
         }}
       >
+
         <Box
           sx={{
             position: 'sticky',
@@ -197,7 +203,7 @@ export default function DeletePhrase() {
           </Button>
         </Box>
 
-        {data.map((item) => (
+        {data.map(item => (
           <Box
             key={item.id}
             sx={{
@@ -211,8 +217,8 @@ export default function DeletePhrase() {
             }}
           >
             <Box>
-              <Typography sx={{ fontWeight: 600 }}>{item.phrase}</Typography>
-              <Typography sx={{ fontSize: 13, color: '#666', mt: 0.5 }}>{item.code}</Typography>
+              <Typography sx={{ fontWeight: 600 }}>{item.experimentName}</Typography>
+              <Typography sx={{ fontSize: 13, color: '#666' }}>{item.code}</Typography>
             </Box>
 
             <Button
@@ -231,18 +237,12 @@ export default function DeletePhrase() {
 
   return (
     <Box sx={[backgroundContentCss]}>
-      <Box
-        sx={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          pt: 8,
-        }}
-      >
+
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 8 }}>
+
         <Box sx={{ width: '60vw', mb: 2 }}>
           <Alert severity="warning" sx={{ borderRadius: 2 }}>
-            Phrase deletion is temporarily disabled. Search and delete actions are unavailable for
-            now.
+            Experiment deletion is temporarily disabled.
           </Alert>
         </Box>
 
@@ -255,10 +255,11 @@ export default function DeletePhrase() {
             opacity: deletionDisabled ? 0.6 : 1,
           }}
         >
+
           <TextField
             fullWidth
             label="Search"
-            placeholder="Search with phrase Code or Phrase..."
+            placeholder="Search experiment name..."
             sx={[inputFieldCss]}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
@@ -272,11 +273,12 @@ export default function DeletePhrase() {
           >
             <Typography sx={[searchTextCss]}>Search</Typography>
           </Button>
+
         </Box>
 
         <SearchResultList data={searchResult} />
 
-        {openDeleteModal && selectedPhrase && (
+        {openDeleteModal && selectedExperiment && (
           <Box
             sx={{
               position: 'fixed',
@@ -288,69 +290,58 @@ export default function DeletePhrase() {
               alignItems: 'center',
               px: 2,
             }}
-            onMouseDown={(e) => {
-              if (e.target === e.currentTarget) closeDelete();
-            }}
           >
+
             <Card
               elevation={0}
               sx={{
-                width: { xs: '95vw', sm: 700, md: 800 },
+                width: { xs: '95vw', sm: 700 },
                 borderRadius: 4,
-                p: { xs: 3, sm: 4 },
+                p: 4,
                 border: '1px solid #e6e6e6',
               }}
             >
-              <Box
-                sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-              >
-                <Typography sx={{ fontSize: 20, fontWeight: 800, color: 'black' }}>
-                  Delete Phrase
-                </Typography>
 
-                <Button variant="text" onClick={closeDelete} disabled={deleting}>
-                  Close
-                </Button>
-              </Box>
+              <Typography sx={{ fontSize: 20, fontWeight: 800 }}>
+                Delete Experiment
+              </Typography>
 
               <Divider sx={{ my: 2 }} />
 
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Typography>
-                  Are you sure you want to delete this phrase?
+              <Typography sx={{ mb: 2 }}>
+                Are you sure you want to delete this experiment?
+              </Typography>
+
+              <Box sx={{ border: '1px solid #eee', borderRadius: 2, p: 2, bgcolor: '#fafafa' }}>
+                <Typography sx={{ fontWeight: 700 }}>
+                  {selectedExperiment.experimentName}
                 </Typography>
-
-                <Box
-                  sx={{
-                    border: '1px solid #e6e6e6',
-                    borderRadius: 2,
-                    p: 2,
-                    bgcolor: '#fafafa',
-                  }}
-                >
-                  <Typography sx={{ fontWeight: 700 }}>{selectedPhrase.phrase}</Typography>
-                  <Typography sx={{ color: '#666', mt: 0.5 }}>
-                    Code: {selectedPhrase.code}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 1 }}>
-                  <Button variant="outlined" onClick={closeDelete} disabled={deleting}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="error"
-                    onClick={handleDelete}
-                    disabled={deleting}
-                  >
-                    {deleting ? 'Deleting...' : 'Delete'}
-                  </Button>
-                </Box>
+                <Typography sx={{ fontSize: 13, color: '#666' }}>
+                  Code: {selectedExperiment.code}
+                </Typography>
               </Box>
+
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 3 }}>
+
+                <Button variant="outlined" onClick={closeDelete} disabled={deleting}>
+                  Cancel
+                </Button>
+
+                <Button
+                  variant="contained"
+                  color="error"
+                  onClick={handleDelete}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </Button>
+
+              </Box>
+
             </Card>
           </Box>
         )}
+
       </Box>
     </Box>
   );

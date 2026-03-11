@@ -5,7 +5,6 @@ import { useEffect, useRef, useState } from "react";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useStore } from "@/store/useStore";
 import { backgroundContentCss } from "../css";
-import { baseUrl } from "@/constants";
 import { useToast } from "../components/ToastProvider";
 
 type UserType = {
@@ -17,6 +16,9 @@ type UserType = {
 };
 
 export default function HomePage() {
+
+    const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
+
     const { firstName, lastName, token } = useStore();
     const { showToast } = useToast();
 
@@ -70,7 +72,7 @@ export default function HomePage() {
             // This matches your curl exactly:
             // GET /user/userByName?search=john&page=1&limit=10
             const res = await fetch(
-                `${baseUrl}/user/userByName?search=${encodeURIComponent(q)}&page=${nextPage}&limit=${limit}`,
+                `${BASE_URL}/user/userByName?search=${encodeURIComponent(q)}&page=${nextPage}&limit=${limit}`,
                 {
                     method: "GET",
                     headers: {

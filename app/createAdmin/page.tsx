@@ -10,14 +10,21 @@ import {
   Button,
 } from '@mui/material'
 import { backgroundContentCss } from '../css'
+import { useStore } from '@/store/useStore'
+import { useToast } from '../components/ToastProvider'
+
 
 export default function CreateAdminPage() {
+
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const {token} = useStore();
+  const {showToast} = useToast();
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
 
     const payload = {
@@ -27,7 +34,28 @@ export default function CreateAdminPage() {
       password,
     }
 
-    console.log(payload)
+    const response = await fetch(`${BASE_URL}/admin/create`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify(payload),
+      }
+    );
+
+
+    if(!response.ok){
+      showToast("Something Went Wrong", 'error', 3000);
+    }
+
+    showToast("Admin Created Successfully", 'success', 3000);
+    setFirstName('');
+    setLastName('');
+    setEmail('');
+    setPassword('');
+    console.log(payload);
   }
 
   return (

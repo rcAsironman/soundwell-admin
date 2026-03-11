@@ -3,7 +3,6 @@
 import { Box, Card, TextField, Typography, Chip, Button, Tooltip } from '@mui/material';
 import { useEffect, useRef, useState } from 'react';
 import { backgroundContentCss, inputFieldCss } from '../css';
-import { baseUrl } from '@/constants';
 import { useStore } from '@/store/useStore';
 import { useToast } from '../components/ToastProvider';
 
@@ -29,6 +28,7 @@ type CreateExperimentPayload = {
 };
 
 export default function CreateExperiment() {
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { token } = useStore();
   const { showToast } = useToast();
 
@@ -121,7 +121,7 @@ export default function CreateExperiment() {
     try {
       setPhraseLoading(true);
 
-      const url = `${baseUrl}/phrase/fetchByNameOrCode?query=${encodeURIComponent(
+      const url = `${BASE_URL}/phrase/fetchByNameOrCode?query=${encodeURIComponent(
         q
       )}&limit=${phraseLimit}&page=${nextPage}`;
 
@@ -160,7 +160,7 @@ export default function CreateExperiment() {
     try {
       setUserLoading(true);
 
-      const url = `${baseUrl}/user/userByName?search=${encodeURIComponent(
+      const url = `${BASE_URL}/user/userByName?search=${encodeURIComponent(
         q
       )}&page=${nextPage}&limit=${userLimit}`;
 
@@ -219,7 +219,7 @@ export default function CreateExperiment() {
     try {
       setCreating(true);
 
-      const res = await fetch(`${baseUrl}/experiment/create`, {
+      const res = await fetch(`${BASE_URL}/experiment/create`, {
         method: 'POST',
         headers: {
           accept: '*/*',

@@ -16,7 +16,6 @@ import CloseIcon from '@mui/icons-material/Close';
 
 import { useStore } from '@/store/useStore';
 import { useToast } from '../components/ToastProvider';
-import { baseUrl } from '@/constants';
 import {
   backgroundContentCss,
   inputFieldCss,
@@ -82,6 +81,8 @@ function normalizePhraseFromSearch(p: any): PhraseType {
 }
 
 export default function UpdateExperimentPage() {
+  
+  const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { token } = useStore();
   const { showToast } = useToast();
 
@@ -126,7 +127,7 @@ export default function UpdateExperimentPage() {
     try {
       setExpLoading(true);
 
-      const url = `${baseUrl}/experiment/fetchByNameOrCode?query=${encodeURIComponent(
+      const url = `${BASE_URL}/experiment/fetchByNameOrCode?query=${encodeURIComponent(
         q
       )}&page=${nextPage}&limit=${expLimit}`;
 
@@ -222,7 +223,7 @@ export default function UpdateExperimentPage() {
   };
 
   const fetchExistingUsersPhrases = async (experimentId: number) => {
-    const url = `${baseUrl}/experiment/fetchById?id=${experimentId}`;
+    const url = `${BASE_URL}/experiment/fetchById?id=${experimentId}`;
 
     const res = await fetch(url, {
       method: 'GET',
@@ -290,7 +291,7 @@ export default function UpdateExperimentPage() {
     try {
       setUserLoading(true);
 
-      const url = `${baseUrl}/user/userByName?search=${encodeURIComponent(
+      const url = `${BASE_URL}/user/userByName?search=${encodeURIComponent(
         q
       )}&page=${nextPage}&limit=${userLimit}`;
 
@@ -338,7 +339,7 @@ export default function UpdateExperimentPage() {
     try {
       setPhraseLoading(true);
 
-      const url = `${baseUrl}/phrase/fetchByNameOrCode?query=${encodeURIComponent(
+      const url = `${BASE_URL}/phrase/fetchByNameOrCode?query=${encodeURIComponent(
         q
       )}&limit=${phraseLimit}&page=${nextPage}`;
 
@@ -404,7 +405,7 @@ export default function UpdateExperimentPage() {
 
     setSaving(true);
     try {
-      const res = await fetch(`${baseUrl}/experiment/update`, {
+      const res = await fetch(`${BASE_URL}/experiment/update`, {
         method: 'PUT',
         headers: {
           accept: '*/*',
