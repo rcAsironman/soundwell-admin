@@ -25,7 +25,7 @@ export default function Login() {
         clearAuthStorage();
     }, [useStore])
 
-    
+
     const handleLogin = async () => {
 
 
@@ -142,7 +142,7 @@ export default function Login() {
                         sx={{
                             fontSize: 30,
                             fontWeight: 600,
-
+                            mb: 4
 
                         }}
                     >
@@ -151,6 +151,11 @@ export default function Login() {
                     </Typography>
 
                     <Box
+                        component="form"
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            handleLogin();
+                        }}
                         sx={{
                             display: "flex",
                             flexDirection: 'column',
@@ -164,7 +169,8 @@ export default function Login() {
                         <TextField
 
                             sx={{
-                                width: '88%'
+                                width: '88%',
+                                mb: 4
 
                             }} id="outlined-basic" label="Email" variant="outlined"
                             type="email"
@@ -181,26 +187,24 @@ export default function Login() {
                             type="password"
                             onChange={(e) => setPassword(e.target.value)}
                         />
-                    </Box>
-
-                    <Button
-                        sx={{
-                            width: '88%',
-                            marginTop: 10
-                        }}
-                        variant="contained"
-                        onClick={handleLogin}
-                    >
-                        <Typography
+                        <Button
+                            type="submit"
                             sx={{
-                                fontWeight: 600,
-                                fontSize: 15
+                                width: '88%',
+                                marginTop: 2
                             }}
+                            variant="contained"
                         >
-                            Sign In
-                        </Typography>
-                    </Button>
-
+                            <Typography
+                                sx={{
+                                    fontWeight: 600,
+                                    fontSize: 15
+                                }}
+                            >
+                                Sign In
+                            </Typography>
+                        </Button>
+                    </Box>
                 </Card>
             </Box>
         </Box>

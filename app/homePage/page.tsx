@@ -1,11 +1,24 @@
 'use client';
 
-import { Box, Button, TextField, Typography } from "@mui/material";
-import { useEffect, useRef, useState } from "react";
+import {
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    TextField,
+    Typography
+} from "@mui/material";
+import { useEffect, useRef, useState, useCallback } from "react";
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import { useStore } from "@/store/useStore";
 import { backgroundContentCss } from "../css";
 import { useToast } from "../components/ToastProvider";
+
+type ExperimentType = {
+    id: number;
+    experimentName: string;
+    experimentCode: string;
+};
 
 type UserType = {
     id: number;
@@ -13,10 +26,34 @@ type UserType = {
     lastName: string;
     userName?: string | null;
     email?: string | null;
+    dob?: string;
+    gender?: string;
+    createdAt?: string;
+    updatedAt?: string;
+    createdByAdminId?: number | null;
+    createdByAdminName?: string | null;
+    createdByAdminEmail?: string | null;
+    experiments: ExperimentType[];
 };
 
-export default function HomePage() {
+type PaginatedUsersResponse = {
+    users: UserType[];
+    page: number;
+    limit: number;
+    total: number;
+    hasMore: boolean;
+};
 
+const chipGradients = [
+    "linear-gradient(135deg, #E3F2FD 0%, #F3E5F5 100%)",
+    "linear-gradient(135deg, #E8F5E9 0%, #E0F7FA 100%)",
+    "linear-gradient(135deg, #FFF3E0 0%, #FCE4EC 100%)",
+    "linear-gradient(135deg, #F3E5F5 0%, #E8EAF6 100%)",
+    "linear-gradient(135deg, #E0F2F1 0%, #E8F5E9 100%)",
+    "linear-gradient(135deg, #FFFDE7 0%, #F3E5F5 100%)",
+];
+
+export default function HomePage() {
     const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
 
     const { firstName, lastName, token } = useStore();
@@ -28,49 +65,72 @@ export default function HomePage() {
     const limit = 10;
     const [hasMore, setHasMore] = useState(true);
     const [loading, setLoading] = useState(false);
+    const [initialLoading, setInitialLoading] = useState(true);
+    const [isSearchMode, setIsSearchMode] = useState(false);
 
-    const resultsRef = useRef<HTMLDivElement | null>(null);
-    const searchBarRef = useRef<HTMLDivElement | null>(null);
+    const observerRef = useRef<IntersectionObserver | null>(null);
+    const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        const handleClick = (event: MouseEvent) => {
-            const target = event.target as Node;
-            const insideResults = resultsRef.current?.contains(target);
-            const insideSearch = searchBarRef.current?.contains(target);
-
-            if (!insideResults && !insideSearch) {
-                // close results only (don’t wipe input unless you want)
-                setUserResults([]);
-                setPage(1);
-                setHasMore(true);
-            }
-        };
-
-        document.addEventListener('mousedown', handleClick);
-        return () => document.removeEventListener('mousedown', handleClick);
-    }, []);
-
-    const clearAll = () => {
-        setSearchText('');
-        setUserResults([]);
-        setPage(1);
-        setHasMore(true);
+    const mergeUniqueUsers = (prev: UserType[], next: UserType[]) => {
+        const map = new Map<number, UserType>();
+        prev.forEach((user) => map.set(user.id, user));
+        next.forEach((user) => map.set(user.id, user));
+        return Array.from(map.values());
     };
 
-    const fetchUsers = async (opts: { reset: boolean }) => {
-        const q = searchText.trim();
-        if (!q) {
-            showToast("Enter a name/email/username to search", "error", 2500);
-            return;
-        }
-
-        const nextPage = opts.reset ? 1 : page;
-
+    const fetchAllUsers = useCallback(async (pageToFetch: number, reset = false) => {
         try {
             setLoading(true);
 
-            // This matches your curl exactly:
-            // GET /user/userByName?search=john&page=1&limit=10
+            const res = await fetch(
+                `${BASE_URL}/user/fetchAllWithPagination?page=${pageToFetch}&limit=${limit}`,
+                {
+                    method: 'GET',
+                    headers: {
+                        accept: '*/*',
+                        Authorization: `Bearer ${token}`,
+                    },
+                }
+            );
+
+            if (!res.ok) {
+                const t = await res.text();
+                throw new Error(t || 'Failed to fetch users');
+            }
+
+            const data: PaginatedUsersResponse = await res.json();
+
+            setUserResults((prev) =>
+                reset ? data.users : mergeUniqueUsers(prev, data.users)
+            );
+            setHasMore(data.hasMore);
+            setPage(pageToFetch + 1);
+        } catch (error) {
+            showToast("Failed to fetch users", "error", 2500);
+            setHasMore(false);
+        } finally {
+            setLoading(false);
+            setInitialLoading(false);
+        }
+    }, [BASE_URL, token, limit, showToast]);
+
+    const fetchSearchUsers = useCallback(async (reset: boolean) => {
+        const q = searchText.trim();
+
+        if (!q) {
+            setIsSearchMode(false);
+            setPage(1);
+            setHasMore(true);
+            fetchAllUsers(1, true);
+            return;
+        }
+
+        const nextPage = reset ? 1 : page;
+
+        try {
+            setLoading(true);
+            setIsSearchMode(true);
+
             const res = await fetch(
                 `${BASE_URL}/user/userByName?search=${encodeURIComponent(q)}&page=${nextPage}&limit=${limit}`,
                 {
@@ -88,38 +148,91 @@ export default function HomePage() {
             }
 
             const data = await res.json();
-            const list: UserType[] = Array.isArray(data) ? data : [];
 
-            setUserResults((prev) => (opts.reset ? list : [...prev, ...list]));
-            setHasMore(list.length === limit);
+            let list: UserType[] = [];
+            let nextHasMore = false;
+
+            if (Array.isArray(data)) {
+                list = data;
+                nextHasMore = list.length === limit;
+            } else if (Array.isArray(data?.users)) {
+                list = data.users;
+                nextHasMore = Boolean(data?.hasMore);
+            }
+
+            setUserResults((prev) => reset ? list : mergeUniqueUsers(prev, list));
+            setHasMore(nextHasMore);
             setPage(nextPage + 1);
 
-            if (opts.reset && list.length === 0) {
+            if (reset && list.length === 0) {
                 showToast("No users found", "error", 2500);
             }
-        } catch (e: any) {
+        } catch (e) {
             showToast("No users found", "error", 3000);
+            setUserResults([]);
             setHasMore(false);
         } finally {
             setLoading(false);
+            setInitialLoading(false);
         }
+    }, [BASE_URL, token, searchText, page, limit, showToast, fetchAllUsers]);
+
+    useEffect(() => {
+        fetchAllUsers(1, true);
+    }, [fetchAllUsers]);
+
+    const lastUserRef = useCallback((node: HTMLDivElement | null) => {
+        if (loading) return;
+
+        if (observerRef.current) {
+            observerRef.current.disconnect();
+        }
+
+        observerRef.current = new IntersectionObserver(
+            (entries) => {
+                if (entries[0].isIntersecting && hasMore) {
+                    if (isSearchMode) {
+                        fetchSearchUsers(false);
+                    } else {
+                        fetchAllUsers(page, false);
+                    }
+                }
+            },
+            {
+                root: scrollContainerRef.current,
+                threshold: 0.2,
+            }
+        );
+
+        if (node) {
+            observerRef.current.observe(node);
+        }
+    }, [loading, hasMore, isSearchMode, page, fetchAllUsers, fetchSearchUsers]);
+
+    const clearAll = () => {
+        setSearchText('');
+        setUserResults([]);
+        setPage(1);
+        setHasMore(true);
+        setIsSearchMode(false);
+        fetchAllUsers(1, true);
     };
 
     return (
         <Box sx={[backgroundContentCss]}>
-            <Typography style={{ fontWeight: 600, fontSize: 20 }}>
+            <Typography sx={{ fontWeight: 600, fontSize: 20 }}>
                 Welcome back, {firstName}, {lastName}
             </Typography>
 
-            <Box sx={{ position: "relative", width: "100%", mt: 2 }}>
+            <Box sx={{ mt: 3, width: '100%' }}>
                 <Box
-                    ref={searchBarRef}
                     sx={{
                         display: "flex",
                         alignItems: "center",
                         gap: 1,
-                        width: "60%",
-                        minWidth: 520,
+                        width: "100%",
+                        maxWidth: 1000,
+                        mb: 3,
                     }}
                 >
                     <TextField
@@ -130,21 +243,25 @@ export default function HomePage() {
                         value={searchText}
                         onChange={(e) => {
                             setSearchText(e.target.value);
-                            setPage(1);
-                            setHasMore(true);
                         }}
                         onKeyDown={(e) => {
-                            if (e.key === "Enter") fetchUsers({ reset: true });
+                            if (e.key === "Enter") {
+                                setPage(1);
+                                fetchSearchUsers(true);
+                            }
                         }}
                     />
 
                     <Button
                         variant="contained"
-                        onClick={() => fetchUsers({ reset: true })}
+                        onClick={() => {
+                            setPage(1);
+                            fetchSearchUsers(true);
+                        }}
                         disabled={loading}
                         sx={{ height: 40, minWidth: 120 }}
                     >
-                        {loading ? "Searching..." : "Search"}
+                        {loading && isSearchMode ? "Searching..." : "Search"}
                     </Button>
 
                     <Button
@@ -156,110 +273,247 @@ export default function HomePage() {
                     </Button>
                 </Box>
 
-                {userResults.length > 0 && (
+                <Box
+                    ref={scrollContainerRef}
+                    sx={{
+                        width: "100%",
+                        height: "75vh",
+                        overflowY: "auto",
+                        bgcolor: "white",
+                        border: "1px solid #e6e6e6",
+                        borderRadius: 3,
+                        p: 3,
+                    }}
+                >
                     <Box
-                        ref={resultsRef}
                         sx={{
-                            position: "absolute",
-                            top: 56,
-                            left: 0,
-                            width: "60%",
-                            minWidth: 520,
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            mb: 2,
+                            pb: 1.5,
+                            borderBottom: "1px solid #eee",
                             bgcolor: "white",
-                            border: "1px solid #e6e6e6",
-                            borderRadius: 2,
-                            zIndex: 10,
-                            maxHeight: 320,
-                            overflowY: "auto",
                         }}
                     >
-                        {/* Sticky header so buttons never overlap list */}
-                        <Box
-                            sx={{
-                                position: "sticky",
-                                top: 0,
-                                bgcolor: "white",
-                                borderBottom: "1px solid #eee",
-                                px: 2,
-                                py: 1,
-                                display: "flex",
-                                justifyContent: "space-between",
-                                alignItems: "center",
-                                zIndex: 2,
-                            }}
-                        >
-                            <Typography sx={{ fontSize: 12, color: "black", opacity: 0.7 }}>
-                                Results: {userResults.length}
-                            </Typography>
+                        <Typography sx={{ fontWeight: 700, color: "black", fontSize: 16 }}>
+                            {isSearchMode ? "Search Results" : "All Users"}
+                        </Typography>
 
-                            <Button
-                                size="small"
-                                onClick={() => {
-                                    setUserResults([]);
-                                    setPage(1);
-                                    setHasMore(true);
-                                }}
-                            >
-                                close
-                            </Button>
+                        <Typography sx={{ fontSize: 13, color: "black", opacity: 0.7 }}>
+                            {userResults.length} user(s)
+                        </Typography>
+                    </Box>
+
+                    {initialLoading ? (
+                        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
+                            <CircularProgress />
                         </Box>
-
-                        {userResults.map((user) => (
+                    ) : userResults.length === 0 ? (
+                        <Typography sx={{ textAlign: "center", py: 8, color: "black", opacity: 0.7 }}>
+                            No users to display
+                        </Typography>
+                    ) : (
+                        <>
                             <Box
-                                key={user.id}
                                 sx={{
-                                    px: 3,
-                                    py: 1.5,
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    alignItems: "center",
-                                    borderBottom: "1px solid #f2f2f2",
-                                    cursor: "pointer",
-                                    "&:hover": { bgcolor: "#fafafa" },
+                                    display: "grid",
+                                    gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))",
+                                    gap: 2,
                                 }}
                             >
-                                <Box>
-                                    <Typography sx={{ fontWeight: 700, color: "black", fontSize: 13 }}>
-                                        {user.firstName} {user.lastName}
-                                    </Typography>
-                                    <Typography sx={{ color: "black", opacity: 0.7, fontSize: 12 }}>
-                                        {user.email ?? "-"}
-                                    </Typography>
-                                </Box>
-                                <Box sx={{
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    width: '20%'
-                                }}>
-                                    {user.userName=== null && (
-                                        <Typography sx={{ color: "grey", opacity: 0.7, fontSize: 8 }}>
-                                        Not Activated
-                                    </Typography>
-                                    )}
-                                    <AccountCircleIcon sx={{ opacity: 0.7 }} />
-                                </Box>
-                            </Box>
-                        ))}
+                                {userResults.map((user, index) => {
+                                    const isLast = index === userResults.length - 1;
 
-                        <Box sx={{ display: "flex", justifyContent: "center", py: 1 }}>
-                            {hasMore ? (
-                                <Button
-                                    variant="outlined"
-                                    size="small"
-                                    onClick={() => fetchUsers({ reset: false })}
-                                    disabled={loading}
+                                    return (
+                                        <Box
+                                            key={user.id}
+                                            ref={isLast ? lastUserRef : null}
+                                            sx={{
+                                                border: "1px solid #ececec",
+                                                borderRadius: 3,
+                                                p: 2,
+                                                bgcolor: "white",
+                                                boxShadow: "0px 2px 8px rgba(0,0,0,0.05)",
+                                                transition: "all 0.2s ease",
+                                                minHeight: 220,
+                                                display: "flex",
+                                                flexDirection: "column",
+                                                justifyContent: "space-between",
+                                                "&:hover": {
+                                                    boxShadow: "0px 6px 18px rgba(0,0,0,0.08)",
+                                                    transform: "translateY(-2px)",
+                                                },
+                                            }}
+                                        >
+                                            <Box>
+                                                <Box
+                                                    sx={{
+                                                        display: "flex",
+                                                        justifyContent: "space-between",
+                                                        alignItems: "flex-start",
+                                                        mb: 1.5,
+                                                    }}
+                                                >
+                                                    <Box sx={{ pr: 1 }}>
+                                                        <Typography
+                                                            sx={{
+                                                                fontWeight: 700,
+                                                                fontSize: 15,
+                                                                color: "black",
+                                                                lineHeight: 1.2,
+                                                            }}
+                                                        >
+                                                            {user.firstName} {user.lastName}
+                                                        </Typography>
+
+                                                        <Typography
+                                                            sx={{
+                                                                fontSize: 11,
+                                                                color: "black",
+                                                                opacity: 0.65,
+                                                                mt: 0.5,
+                                                            }}
+                                                        >
+                                                            ID: {user.id}
+                                                        </Typography>
+                                                    </Box>
+
+                                                    <AccountCircleIcon
+                                                        sx={{
+                                                            opacity: 0.65,
+                                                            fontSize: 30,
+                                                        }}
+                                                    />
+                                                </Box>
+
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 12,
+                                                        color: "black",
+                                                        opacity: 0.75,
+                                                        mb: 0.7,
+                                                        wordBreak: "break-word",
+                                                    }}
+                                                >
+                                                    Email: {user.email ?? "-"}
+                                                </Typography>
+
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 12,
+                                                        color: "black",
+                                                        opacity: 0.75,
+                                                        mb: 0.7,
+                                                    }}
+                                                >
+                                                    Username: {user.userName ?? "Not Activated"}
+                                                </Typography>
+
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 12,
+                                                        color: "black",
+                                                        opacity: 0.75,
+                                                        mb: 0.7,
+                                                    }}
+                                                >
+                                                    Created By: {user.createdByAdminName ?? "Root Admin"}
+                                                </Typography>
+
+                                                <Typography
+                                                    sx={{
+                                                        fontSize: 12,
+                                                        color: "black",
+                                                        opacity: 0.75,
+                                                        mb: 1.5,
+                                                        wordBreak: "break-word",
+                                                    }}
+                                                >
+                                                    Creator Email: {user.createdByAdminEmail ?? "-"}
+                                                </Typography>
+                                            </Box>
+
+                                            <Box>
+                                                <Typography
+                                                    sx={{
+                                                        fontWeight: 600,
+                                                        fontSize: 12,
+                                                        color: "black",
+                                                        mb: 1,
+                                                    }}
+                                                >
+                                                    Experiments
+                                                </Typography>
+
+                                                {user.experiments && user.experiments.length > 0 ? (
+                                                    <Box
+                                                        sx={{
+                                                            display: "flex",
+                                                            flexWrap: "wrap",
+                                                            gap: 0.8,
+                                                        }}
+                                                    >
+                                                        {user.experiments.map((exp, expIndex) => (
+                                                            <Chip
+                                                                key={exp.id}
+                                                                label={`${exp.experimentName} (${exp.experimentCode})`}
+                                                                size="small"
+                                                                sx={{
+                                                                    fontSize: 10,
+                                                                    height: 24,
+                                                                    color: "#333",
+                                                                    background: chipGradients[expIndex % chipGradients.length],
+                                                                    borderRadius: "14px",
+                                                                    maxWidth: "100%",
+                                                                    "& .MuiChip-label": {
+                                                                        px: 1.2,
+                                                                        overflow: "hidden",
+                                                                        textOverflow: "ellipsis",
+                                                                    },
+                                                                }}
+                                                            />
+                                                        ))}
+                                                    </Box>
+                                                ) : (
+                                                    <Typography
+                                                        sx={{
+                                                            fontSize: 11,
+                                                            color: "black",
+                                                            opacity: 0.55,
+                                                        }}
+                                                    >
+                                                        No experiments assigned
+                                                    </Typography>
+                                                )}
+                                            </Box>
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+
+                            {loading && (
+                                <Box sx={{ display: "flex", justifyContent: "center", py: 3 }}>
+                                    <CircularProgress size={28} />
+                                </Box>
+                            )}
+
+                            {!hasMore && userResults.length > 0 && (
+                                <Typography
+                                    sx={{
+                                        textAlign: "center",
+                                        py: 3,
+                                        color: "black",
+                                        opacity: 0.65,
+                                        fontSize: 12,
+                                    }}
                                 >
-                                    {loading ? "Loading..." : "Load more"}
-                                </Button>
-                            ) : (
-                                <Typography sx={{ color: "black", opacity: 0.65, fontSize: 12 }}>
                                     End of results
                                 </Typography>
                             )}
-                        </Box>
-                    </Box>
-                )}
+                        </>
+                    )}
+                </Box>
             </Box>
         </Box>
     );

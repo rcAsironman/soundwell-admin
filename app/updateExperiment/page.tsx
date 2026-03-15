@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Button,
@@ -22,8 +22,6 @@ import {
   searchButtonBgColorCss,
   searchTextCss,
 } from '@/app/css';
-
-
 
 type ExperimentListItem = {
   id: number;
@@ -61,6 +59,14 @@ type UpdateExperimentPayload = {
   removeUserIds: number[];
 };
 
+type FetchAllExperimentsResponse = {
+  experiments: ExperimentListItem[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+};
+
 function uniqueById<T extends { id: number }>(arr: T[]): T[] {
   const map = new Map<number, T>();
   for (const item of arr) map.set(item.id, item);
@@ -80,13 +86,20 @@ function normalizePhraseFromSearch(p: any): PhraseType {
   };
 }
 
+const phraseChipGradients = [
+  'linear-gradient(135deg, #E3F2FD 0%, #F3E5F5 100%)',
+  'linear-gradient(135deg, #E8F5E9 0%, #E0F7FA 100%)',
+  'linear-gradient(135deg, #FFF3E0 0%, #FCE4EC 100%)',
+  'linear-gradient(135deg, #F3E5F5 0%, #E8EAF6 100%)',
+  'linear-gradient(135deg, #E0F2F1 0%, #E8F5E9 100%)',
+  'linear-gradient(135deg, #FFFDE7 0%, #F3E5F5 100%)',
+];
+
 export default function UpdateExperimentPage() {
-  
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { token } = useStore();
   const { showToast } = useToast();
 
-  // Experiment search (top)
   const [query, setQuery] = useState('');
   const [expPage, setExpPage] = useState(1);
   const expLimit = 10;
@@ -94,91 +107,145 @@ export default function UpdateExperimentPage() {
   const [expResults, setExpResults] = useState<ExperimentListItem[]>([]);
   const [expLoading, setExpLoading] = useState(false);
   const [expHasMore, setExpHasMore] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const expResultsRef = useRef<HTMLDivElement | null>(null);
+  const didInitialFetchRef = useRef(false);
 
   const clearExperimentSearch = () => {
-    setExpResults([]);
     setQuery('');
+    setExpResults([]);
     setExpPage(1);
     setExpHasMore(true);
+    setIsSearchMode(false);
+    fetchAllExperiments(1, true, true);
   };
 
   useEffect(() => {
     const handleClick = (event: MouseEvent) => {
       if (expResultsRef.current && !expResultsRef.current.contains(event.target as Node)) {
-        clearExperimentSearch();
+        return;
       }
     };
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const fetchExperiments = async (opts: { reset: boolean }) => {
-    const q = query.trim();
-    if (!q) {
-      showToast('Enter search text', 'error', 2500);
-      return;
-    }
+  const fetchAllExperiments = useCallback(
+    async (pageToFetch: number, reset = false, silent = false) => {
+      if (!token) return;
 
-    const nextPage = opts.reset ? 1 : expPage;
+      try {
+        setExpLoading(true);
+        setIsSearchMode(false);
 
-    try {
-      setExpLoading(true);
+        const url = `${BASE_URL}/experiment/fetchAllWithPagination?page=${pageToFetch}&limit=${expLimit}`;
 
-      const url = `${BASE_URL}/experiment/fetchByNameOrCode?query=${encodeURIComponent(
-        q
-      )}&page=${nextPage}&limit=${expLimit}`;
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-      const res = await fetch(url, {
-        method: 'GET',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+        if (!res.ok) {
+          const msg = await res.text();
+          throw new Error(msg || 'Failed to fetch experiments');
+        }
 
-      if (!res.ok) {
+        const data: FetchAllExperimentsResponse = await res.json();
+        const list = Array.isArray(data?.experiments) ? data.experiments : [];
+
+        setExpResults((prev) => (reset ? list : uniqueById([...prev, ...list])));
+        setExpHasMore(Boolean(data?.hasMore));
+        setExpPage(pageToFetch + 1);
+      } catch (e: any) {
+        console.error('fetchAllExperiments error:', e);
+        if (!silent) {
+          showToast(e?.message || 'Failed to fetch experiments', 'error', 3000);
+        }
         setExpHasMore(false);
-        throw new Error('Search failed');
+      } finally {
+        setExpLoading(false);
+        setInitialLoading(false);
+      }
+    },
+    [BASE_URL, token, expLimit, showToast]
+  );
+
+  const fetchExperimentsBySearch = useCallback(
+    async (opts: { reset: boolean }) => {
+      const q = query.trim();
+      if (!q) {
+        showToast('Enter search text', 'error', 2500);
+        return;
       }
 
-      const data = await res.json();
+      const nextPage = opts.reset ? 1 : expPage;
 
-      const list: ExperimentListItem[] = Array.isArray(data)
-        ? data
-        : Array.isArray(data?.results)
-        ? data.results
-        : data
-        ? [data as ExperimentListItem]
-        : [];
+      try {
+        setExpLoading(true);
+        setIsSearchMode(true);
 
-      setExpResults((prev) => (opts.reset ? list : uniqueById([...prev, ...list])));
-      setExpHasMore(list.length === expLimit);
-      setExpPage(nextPage + 1);
-    } catch (e) {
-      showToast('Result Not Found', 'error', 3000);
-    } finally {
-      setExpLoading(false);
-    }
-  };
+        const url = `${BASE_URL}/experiment/fetchByNameOrCode?query=${encodeURIComponent(
+          q
+        )}&page=${nextPage}&limit=${expLimit}`;
 
-  // Overlay state
+        const res = await fetch(url, {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) {
+          setExpHasMore(false);
+          throw new Error('Search failed');
+        }
+
+        const data = await res.json();
+
+        const list: ExperimentListItem[] = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.results)
+            ? data.results
+            : data
+              ? [data as ExperimentListItem]
+              : [];
+
+        setExpResults((prev) => (opts.reset ? list : uniqueById([...prev, ...list])));
+        setExpHasMore(list.length === expLimit);
+        setExpPage(nextPage + 1);
+      } catch {
+        showToast('Result Not Found', 'error', 3000);
+      } finally {
+        setExpLoading(false);
+        setInitialLoading(false);
+      }
+    },
+    [BASE_URL, query, expPage, expLimit, token, showToast]
+  );
+
+  useEffect(() => {
+    if (!token) return;
+    if (didInitialFetchRef.current) return;
+    didInitialFetchRef.current = true;
+    fetchAllExperiments(1, true, true);
+  }, [token, fetchAllExperiments]);
+
   const [open, setOpen] = useState(false);
   const [activeExperimentId, setActiveExperimentId] = useState<number | null>(null);
   const [newName, setNewName] = useState('');
 
   const [overlayLoading, setOverlayLoading] = useState(false);
 
-  // Baseline ids (existing assigned)
   const [initialUserIds, setInitialUserIds] = useState<number[]>([]);
   const [initialPhraseIds, setInitialPhraseIds] = useState<number[]>([]);
 
-  // Current selected items
   const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
   const [selectedPhrases, setSelectedPhrases] = useState<PhraseType[]>([]);
 
-  // User search in overlay
   const [userSearchText, setUserSearchText] = useState('');
   const [userResults, setUserResults] = useState<UserType[]>([]);
   const [userPage, setUserPage] = useState(1);
@@ -186,7 +253,6 @@ export default function UpdateExperimentPage() {
   const [userLoading, setUserLoading] = useState(false);
   const [userHasMore, setUserHasMore] = useState(true);
 
-  // Phrase search in overlay
   const [phraseSearchText, setPhraseSearchText] = useState('');
   const [phraseResults, setPhraseResults] = useState<PhraseType[]>([]);
   const [phrasePage, setPhrasePage] = useState(1);
@@ -256,7 +322,7 @@ export default function UpdateExperimentPage() {
 
       resetUserSearch();
       resetPhraseSearch();
-    } catch (e) {
+    } catch {
       showToast('Failed to open experiment', 'error', 3000);
     } finally {
       setOverlayLoading(false);
@@ -312,15 +378,15 @@ export default function UpdateExperimentPage() {
       const list: UserType[] = Array.isArray(data)
         ? data
         : Array.isArray(data?.results)
-        ? data.results
-        : data
-        ? [data as UserType]
-        : [];
+          ? data.results
+          : data
+            ? [data as UserType]
+            : [];
 
       setUserResults((prev) => (opts.reset ? list : uniqueById([...prev, ...list])));
       setUserHasMore(list.length === userLimit);
       setUserPage(nextPage + 1);
-    } catch (e) {
+    } catch {
       showToast('Result Not Found', 'error', 3000);
     } finally {
       setUserLoading(false);
@@ -360,17 +426,17 @@ export default function UpdateExperimentPage() {
       const rawList: any[] = Array.isArray(data)
         ? data
         : Array.isArray(data?.results)
-        ? data.results
-        : data
-        ? [data]
-        : [];
+          ? data.results
+          : data
+            ? [data]
+            : [];
 
       const list: PhraseType[] = rawList.map(normalizePhraseFromSearch);
 
       setPhraseResults((prev) => (opts.reset ? list : uniqueById([...prev, ...list])));
       setPhraseHasMore(list.length === phraseLimit);
       setPhrasePage(nextPage + 1);
-    } catch (e) {
+    } catch {
       showToast('Result Not Found', 'error', 3000);
     } finally {
       setPhraseLoading(false);
@@ -419,7 +485,7 @@ export default function UpdateExperimentPage() {
 
       showToast('Experiment updated', 'success', 2500);
       closeOverlay();
-    } catch (e) {
+    } catch {
       showToast('Update failed', 'error', 3000);
     } finally {
       setSaving(false);
@@ -440,6 +506,12 @@ export default function UpdateExperimentPage() {
         }}
       >
         <Box
+          component="form"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setExpPage(1);
+            fetchExperimentsBySearch({ reset: true });
+          }}
           sx={{
             width: searchRowWidth,
             display: 'grid',
@@ -457,10 +529,7 @@ export default function UpdateExperimentPage() {
           />
 
           <Button
-            onClick={() => {
-              setExpPage(1);
-              fetchExperiments({ reset: true });
-            }}
+            type="submit"
             sx={[searchButtonBgColorCss, { height: 45 }]}
             disabled={expLoading}
           >
@@ -468,88 +537,154 @@ export default function UpdateExperimentPage() {
           </Button>
         </Box>
 
-        {expResults.length > 0 && (
-          <Card
-            ref={expResultsRef}
-            elevation={0}
-            sx={{
-              width: searchRowWidth,
-              mt: 2.5,
-              borderRadius: 3,
-              bgcolor: 'white',
-              border: '1px solid #ececec',
-              overflow: 'hidden',
-              position: 'relative',
-              minHeight: 340,
-            }}
-          >
+        <Card
+          ref={expResultsRef}
+          elevation={0}
+          sx={{
+            width: searchRowWidth,
+            mt: 2.5,
+            borderRadius: 3,
+            bgcolor: 'white',
+            border: '1px solid #ececec',
+            overflow: 'hidden',
+            position: 'relative',
+            minHeight: 220,
+            p: 3,
+          }}
+        >
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+            <Typography sx={{ fontWeight: 700, color: 'black', fontSize: 16 }}>
+              {isSearchMode ? 'Search Results' : 'All Experiments'}
+            </Typography>
+
             <Button
               onClick={clearExperimentSearch}
               sx={{
-                position: 'absolute',
-                top: 10,
-                right: 10,
                 fontSize: 12,
                 letterSpacing: 0.4,
               }}
             >
               CLEAR
             </Button>
+          </Box>
 
-            {expResults.map((item) => (
+          {initialLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
+              <CircularProgress />
+            </Box>
+          ) : expResults.length === 0 ? (
+            <Typography sx={{ textAlign: 'center', py: 8, color: 'black', opacity: 0.7 }}>
+              No experiments to display
+            </Typography>
+          ) : (
+            <>
               <Box
-                key={item.id}
-                onClick={() => openExperiment(item)}
                 sx={{
-                  px: 4,
-                  py: 3,
-                  cursor: 'pointer',
                   display: 'grid',
-                  gridTemplateColumns: '1fr auto',
-                  alignItems: 'center',
-                  borderBottom: '1px solid #e3e3e3',
-                  '&:hover': { bgcolor: '#fafafa' },
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, 1fr)',
+                    lg: 'repeat(3, 1fr)',
+                  },
+                  gap: 2,
+                  alignItems: 'start',
                 }}
               >
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: 'black' }}>
-                    {item.experimentName}
-                  </Typography>
-                  <Typography sx={{ color: 'black', opacity: 0.7 }}>
-                    {item.experimentCode}
-                  </Typography>
-                </Box>
+                {expResults.map((item) => (
+                  <Card
+                    key={item.id}
+                    onClick={() => openExperiment(item)}
+                    elevation={0}
+                    sx={{
+                      borderRadius: 3,
+                      p: 2,
+                      cursor: 'pointer',
+                      border: '1px solid #e8e8e8',
+                      bgcolor: 'white',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 1.5,
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        boxShadow: '0 8px 20px rgba(0,0,0,0.08)',
+                      },
+                    }}
+                  >
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontWeight: 800,
+                          color: 'black',
+                          fontSize: 15,
+                          lineHeight: 1.3,
+                          mb: 1,
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {item.experimentName}
+                      </Typography>
 
-                <Box sx={{ display: 'flex', gap: 3 }}>
-                  {typeof item.usersCount === 'number' && (
-                    <Typography sx={{ color: 'black', opacity: 0.8 }}>
-                      Users: {item.usersCount}
-                    </Typography>
-                  )}
-                  {typeof item.phrasesCount === 'number' && (
-                    <Typography sx={{ color: 'black', opacity: 0.8 }}>
-                      Phrases: {item.phrasesCount}
-                    </Typography>
-                  )}
-                </Box>
+                      <Chip
+                        label={item.experimentCode}
+                        size="small"
+                        sx={{
+                          bgcolor: '#f6f6f6',
+                          border: '1px solid #e0e0e0',
+                          fontWeight: 700,
+                          width: 'fit-content',
+                        }}
+                      />
+                    </Box>
+
+                    {/* <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      {typeof item.usersCount === 'number' && (
+                        <Chip
+                          label={`Users: ${item.usersCount}`}
+                          size="small"
+                          sx={{
+                            bgcolor: '#fafafa',
+                            border: '1px solid #e0e0e0',
+                          }}
+                        />
+                      )}
+                      {typeof item.phrasesCount === 'number' && (
+                        <Chip
+                          label={`Phrases: ${item.phrasesCount}`}
+                          size="small"
+                          sx={{
+                            bgcolor: '#fafafa',
+                            border: '1px solid #e0e0e0',
+                          }}
+                        />
+                      )}
+                    </Box> */}
+                  </Card>
+                ))}
               </Box>
-            ))}
 
-            <Box sx={{ p: 2, display: 'flex', justifyContent: 'center' }}>
-              {expHasMore ? (
-                <Button
-                  variant="outlined"
-                  onClick={() => fetchExperiments({ reset: false })}
-                  disabled={expLoading}
-                >
-                  {expLoading ? 'Loading...' : 'Load more'}
-                </Button>
-              ) : (
-                <Typography sx={{ color: 'black', opacity: 0.7 }}>End of results</Typography>
-              )}
-            </Box>
-          </Card>
-        )}
+              <Box sx={{ pt: 3, display: 'flex', justifyContent: 'center' }}>
+                {expHasMore ? (
+                  <Button
+                    variant="outlined"
+                    onClick={() => {
+                      if (isSearchMode) {
+                        fetchExperimentsBySearch({ reset: false });
+                      } else {
+                        fetchAllExperiments(expPage, false);
+                      }
+                    }}
+                    disabled={expLoading}
+                  >
+                    {expLoading ? 'Loading...' : 'Load more'}
+                  </Button>
+                ) : (
+                  <Typography sx={{ color: 'black', opacity: 0.7 }}>End of results</Typography>
+                )}
+              </Box>
+            </>
+          )}
+        </Card>
       </Box>
 
       {open && (
@@ -616,7 +751,16 @@ export default function UpdateExperimentPage() {
                   <Box>
                     <Typography sx={{ fontWeight: 800, color: 'black', mb: 1 }}>Phrases</Typography>
 
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 2 }}>
+                    <Box
+                      component="form"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setPhrasePage(1);
+                        setPhraseHasMore(true);
+                        fetchPhrases({ reset: true });
+                      }}
+                      sx={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 2 }}
+                    >
                       <TextField
                         label="Search phrases"
                         size="small"
@@ -625,12 +769,8 @@ export default function UpdateExperimentPage() {
                         onChange={(e) => setPhraseSearchText(e.target.value)}
                       />
                       <Button
+                        type="submit"
                         variant="outlined"
-                        onClick={() => {
-                          setPhrasePage(1);
-                          setPhraseHasMore(true);
-                          fetchPhrases({ reset: true });
-                        }}
                         disabled={phraseLoading}
                         sx={{ height: 40 }}
                       >
@@ -669,11 +809,20 @@ export default function UpdateExperimentPage() {
                                 '&:hover': { bgcolor: isSelected ? 'inherit' : '#fafafa' },
                               }}
                             >
-                              <Box>
+                              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.8 }}>
                                 <Typography sx={{ color: 'black' }}>{p.phrase}</Typography>
-                                <Typography sx={{ color: 'black', opacity: 0.7 }}>
-                                  {p.phraseCode}
-                                </Typography>
+
+                                <Chip
+                                  label={p.phraseCode}
+                                  size="small"
+                                  sx={{
+                                    width: 'fit-content',
+                                    fontWeight: 700,
+                                    color: '#333',
+                                    background: phraseChipGradients[p.id % phraseChipGradients.length],
+                                    border: '1px solid rgba(0,0,0,0.08)',
+                                  }}
+                                />
                               </Box>
 
                               {isSelected && (
@@ -715,9 +864,19 @@ export default function UpdateExperimentPage() {
                         {selectedPhrases.map((p) => (
                           <Chip
                             key={p.id}
-                            label={p.phraseCode}
+                            label={`${p.phraseCode} - ${p.phrase}`}
                             onDelete={() => removePhrase(p.id)}
-                            sx={{ border: '1px solid #ccc' }}
+                            sx={{
+                              maxWidth: 260,
+                              fontWeight: 700,
+                              color: '#333',
+                              background: phraseChipGradients[p.id % phraseChipGradients.length],
+                              border: '1px solid rgba(0,0,0,0.08)',
+                              '& .MuiChip-label': {
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              },
+                            }}
                           />
                         ))}
                         {selectedPhrases.length === 0 && (
@@ -732,7 +891,16 @@ export default function UpdateExperimentPage() {
                   <Box>
                     <Typography sx={{ fontWeight: 800, color: 'black', mb: 1 }}>Users</Typography>
 
-                    <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 2 }}>
+                    <Box
+                      component="form"
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        setUserPage(1);
+                        setUserHasMore(true);
+                        fetchUsers({ reset: true });
+                      }}
+                      sx={{ display: 'grid', gridTemplateColumns: '1fr 120px', gap: 2 }}
+                    >
                       <TextField
                         label="Search users"
                         size="small"
@@ -741,12 +909,8 @@ export default function UpdateExperimentPage() {
                         onChange={(e) => setUserSearchText(e.target.value)}
                       />
                       <Button
+                        type="submit"
                         variant="outlined"
-                        onClick={() => {
-                          setUserPage(1);
-                          setUserHasMore(true);
-                          fetchUsers({ reset: true });
-                        }}
                         disabled={userLoading}
                         sx={{ height: 40 }}
                       >

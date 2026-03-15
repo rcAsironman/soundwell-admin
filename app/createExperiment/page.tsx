@@ -323,6 +323,11 @@ export default function CreateExperiment() {
                   gap: 2,
                   alignItems: 'center',
                 }}
+                component={"form"}
+                onSubmit={(e) => {
+                            e.preventDefault();
+                            fetchPhrases({ reset: true })
+                        }}
               >
                 <TextField
                   label="Search phrases"
@@ -334,7 +339,7 @@ export default function CreateExperiment() {
                 />
                 <Button
                   variant="contained"
-                  onClick={() => fetchPhrases({ reset: true })}
+                  type='submit'
                   disabled={phraseLoading}
                   sx={{ height: 40 }}
                 >
@@ -472,6 +477,11 @@ export default function CreateExperiment() {
                   gap: 2,
                   alignItems: 'center',
                 }}
+                component={"form"}
+                onSubmit={(e) => {
+                   e.preventDefault();
+                   fetchUsers({ reset: true })
+                }}
               >
                 <TextField
                   label="Search users"
@@ -483,7 +493,7 @@ export default function CreateExperiment() {
                 />
                 <Button
                   variant="contained"
-                  onClick={() => fetchUsers({ reset: true })}
+                  type='submit'
                   disabled={userLoading}
                   sx={{ height: 40 }}
                 >
