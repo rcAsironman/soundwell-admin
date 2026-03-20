@@ -1,7 +1,7 @@
 'use client';
 
-import { Box, Card, TextField, Typography, Chip, Button, Tooltip } from '@mui/material';
-import { useEffect, useRef, useState } from 'react';
+import { Box, Card, TextField, Typography, Chip, Button, Tooltip, CircularProgress } from '@mui/material';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { backgroundContentCss, inputFieldCss } from '../css';
 import { useStore } from '@/store/useStore';
 import { useToast } from '../components/ToastProvider';
@@ -27,6 +27,36 @@ type CreateExperimentPayload = {
   userIds: number[];
 };
 
+type PaginatedUsersResponse = {
+  users: UserType[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+};
+
+type PaginatedPhrasesResponse = {
+  phrases: any[];
+  page: number;
+  limit: number;
+  total: number;
+  hasMore: boolean;
+};
+
+function uniqueById<T extends { id: number }>(arr: T[]): T[] {
+  const map = new Map<number, T>();
+  for (const item of arr) map.set(item.id, item);
+  return Array.from(map.values());
+}
+
+function normalizePhrase(p: any): PhraseType {
+  return {
+    id: Number(p.id),
+    code: p.code ?? p.phraseCode ?? '',
+    phrase: p.phrase ?? '',
+  };
+}
+
 export default function CreateExperiment() {
   const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL;
   const { token } = useStore();
@@ -35,46 +65,63 @@ export default function CreateExperiment() {
   const [experimentName, setExperimentName] = useState('');
   const [experimentCode, setExperimentCode] = useState('');
 
-  // Phrase search
-  const [phraseQuery, setPhraseQuery] = useState('');
-  const [phrasePage, setPhrasePage] = useState(1);
   const phraseLimit = 10;
-  const [phraseResult, setPhraseResult] = useState<PhraseType[]>([]);
-  const [selectedPhrases, setSelectedPhrases] = useState<PhraseType[]>([]);
-  const [phraseHasMore, setPhraseHasMore] = useState(true);
-  const [phraseLoading, setPhraseLoading] = useState(false);
-
-  // User search
-  const [userSearchText, setUserSearchText] = useState('');
-  const [userPage, setUserPage] = useState(1);
   const userLimit = 10;
-  const [userResult, setUserResult] = useState<UserType[]>([]);
+
+  // phrases: all list
+  const [allPhrases, setAllPhrases] = useState<PhraseType[]>([]);
+  const [allPhrasesPage, setAllPhrasesPage] = useState(1);
+  const [allPhrasesHasMore, setAllPhrasesHasMore] = useState(true);
+  const [allPhrasesLoading, setAllPhrasesLoading] = useState(false);
+  const [allPhrasesInitialLoading, setAllPhrasesInitialLoading] = useState(true);
+
+  // phrases: search list
+  const [phraseQuery, setPhraseQuery] = useState('');
+  const [searchedPhrases, setSearchedPhrases] = useState<PhraseType[]>([]);
+  const [searchedPhrasesPage, setSearchedPhrasesPage] = useState(1);
+  const [searchedPhrasesHasMore, setSearchedPhrasesHasMore] = useState(true);
+  const [searchedPhrasesLoading, setSearchedPhrasesLoading] = useState(false);
+  const [isPhraseSearchMode, setIsPhraseSearchMode] = useState(false);
+
+  // users: all list
+  const [allUsers, setAllUsers] = useState<UserType[]>([]);
+  const [allUsersPage, setAllUsersPage] = useState(1);
+  const [allUsersHasMore, setAllUsersHasMore] = useState(true);
+  const [allUsersLoading, setAllUsersLoading] = useState(false);
+  const [allUsersInitialLoading, setAllUsersInitialLoading] = useState(true);
+
+  // users: search list
+  const [userSearchText, setUserSearchText] = useState('');
+  const [searchedUsers, setSearchedUsers] = useState<UserType[]>([]);
+  const [searchedUsersPage, setSearchedUsersPage] = useState(1);
+  const [searchedUsersHasMore, setSearchedUsersHasMore] = useState(true);
+  const [searchedUsersLoading, setSearchedUsersLoading] = useState(false);
+  const [isUserSearchMode, setIsUserSearchMode] = useState(false);
+
+  const [selectedPhrases, setSelectedPhrases] = useState<PhraseType[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<UserType[]>([]);
-  const [userHasMore, setUserHasMore] = useState(true);
-  const [userLoading, setUserLoading] = useState(false);
 
-  // If you're using click-outside to clear, keep a wrapper ref.
-  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  const phraseScrollRef = useRef<HTMLDivElement | null>(null);
+  const userScrollRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const handleClick = (event: MouseEvent) => {
-      if (searchWrapperRef.current && !searchWrapperRef.current.contains(event.target as Node)) {
-        // clear only search lists (not selected items)
-        setUserResult([]);
-        setUserSearchText('');
-        setUserPage(1);
-        setUserHasMore(true);
+  const didInitialUsersFetchRef = useRef(false);
+  const didInitialPhrasesFetchRef = useRef(false);
 
-        setPhraseResult([]);
-        setPhraseQuery('');
-        setPhrasePage(1);
-        setPhraseHasMore(true);
-      }
-    };
+  const displayedPhrases = useMemo(
+    () => (isPhraseSearchMode ? searchedPhrases : allPhrases),
+    [isPhraseSearchMode, searchedPhrases, allPhrases]
+  );
 
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
+  const displayedUsers = useMemo(
+    () => (isUserSearchMode ? searchedUsers : allUsers),
+    [isUserSearchMode, searchedUsers, allUsers]
+  );
+
+  const displayedPhraseLoading = isPhraseSearchMode ? searchedPhrasesLoading : allPhrasesLoading;
+  const displayedPhraseHasMore = isPhraseSearchMode ? searchedPhrasesHasMore : allPhrasesHasMore;
+
+  const displayedUserLoading = isUserSearchMode ? searchedUsersLoading : allUsersLoading;
+  const displayedUserHasMore = isUserSearchMode ? searchedUsersHasMore : allUsersHasMore;
 
   const addUser = (user: UserType) => {
     setSelectedUsers((prev) => (prev.some((u) => u.id === user.id) ? prev : [...prev, user]));
@@ -95,35 +142,93 @@ export default function CreateExperiment() {
   const clearSelectedPhrases = () => setSelectedPhrases([]);
   const clearSelectedUsers = () => setSelectedUsers([]);
 
-  const clearPhraseResults = () => {
-    setPhraseResult([]);
-    setPhraseQuery('');
-    setPhrasePage(1);
-    setPhraseHasMore(true);
-  };
+  const fetchAllPhrases = useCallback(async (pageToFetch: number, reset = false) => {
+    if (!token) return;
 
-  const clearUserResults = () => {
-    setUserResult([]);
-    setUserSearchText('');
-    setUserPage(1);
-    setUserHasMore(true);
-  };
+    try {
+      setAllPhrasesLoading(true);
 
-  const fetchPhrases = async (opts: { reset: boolean }) => {
+      const res = await fetch(
+        `${BASE_URL}/phrase/fetchAllWithPagination?page=${pageToFetch}&limit=${phraseLimit}`,
+        {
+          method: 'GET',
+          headers: {
+            accept: '*/*',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Failed to fetch phrases');
+      }
+
+      const data: PaginatedPhrasesResponse = await res.json();
+      const normalized = (data.phrases ?? []).map(normalizePhrase);
+
+      setAllPhrases((prev) => (reset ? normalized : uniqueById([...prev, ...normalized])));
+      setAllPhrasesHasMore(Boolean(data.hasMore));
+      setAllPhrasesPage(pageToFetch + 1);
+    } catch {
+      showToast('Failed to fetch phrases', 'error', 2500);
+      setAllPhrasesHasMore(false);
+    } finally {
+      setAllPhrasesLoading(false);
+      setAllPhrasesInitialLoading(false);
+    }
+  }, [BASE_URL, token, phraseLimit, showToast]);
+
+  const fetchAllUsers = useCallback(async (pageToFetch: number, reset = false) => {
+    if (!token) return;
+
+    try {
+      setAllUsersLoading(true);
+
+      const res = await fetch(
+        `${BASE_URL}/user/fetchAllWithPagination?page=${pageToFetch}&limit=${userLimit}`,
+        {
+          method: 'GET',
+          headers: {
+            accept: '*/*',
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (!res.ok) {
+        const t = await res.text();
+        throw new Error(t || 'Failed to fetch users');
+      }
+
+      const data: PaginatedUsersResponse = await res.json();
+
+      setAllUsers((prev) => (reset ? data.users : uniqueById([...prev, ...data.users])));
+      setAllUsersHasMore(Boolean(data.hasMore));
+      setAllUsersPage(pageToFetch + 1);
+    } catch {
+      showToast('Failed to fetch users', 'error', 2500);
+      setAllUsersHasMore(false);
+    } finally {
+      setAllUsersLoading(false);
+      setAllUsersInitialLoading(false);
+    }
+  }, [BASE_URL, token, userLimit, showToast]);
+
+  const searchPhrases = useCallback(async (pageToFetch: number, reset = false) => {
     const q = phraseQuery.trim();
     if (!q) {
       showToast('Enter phrase search text', 'error', 2500);
       return;
     }
 
-    const nextPage = opts.reset ? 1 : phrasePage;
-
     try {
-      setPhraseLoading(true);
+      setSearchedPhrasesLoading(true);
+      setIsPhraseSearchMode(true);
 
       const url = `${BASE_URL}/phrase/fetchByNameOrCode?query=${encodeURIComponent(
         q
-      )}&limit=${phraseLimit}&page=${nextPage}`;
+      )}&limit=${phraseLimit}&page=${pageToFetch}`;
 
       const res = await fetch(url, {
         method: 'GET',
@@ -135,34 +240,34 @@ export default function CreateExperiment() {
       if (!res.ok) throw new Error('Phrase search failed');
 
       const data = await res.json();
-      const list: PhraseType[] = Array.isArray(data) ? data : [];
+      const rawList: any[] = Array.isArray(data) ? data : [];
+      const list: PhraseType[] = rawList.map(normalizePhrase);
 
-      setPhraseResult((prev) => (opts.reset ? list : [...prev, ...list]));
-      setPhraseHasMore(list.length === phraseLimit);
-      setPhrasePage(nextPage + 1);
-    } catch (e) {
+      setSearchedPhrases((prev) => (reset ? list : uniqueById([...prev, ...list])));
+      setSearchedPhrasesHasMore(list.length === phraseLimit);
+      setSearchedPhrasesPage(pageToFetch + 1);
+    } catch {
       showToast('Phrase result not found', 'error', 3000);
-      setPhraseHasMore(false);
+      setSearchedPhrasesHasMore(false);
     } finally {
-      setPhraseLoading(false);
+      setSearchedPhrasesLoading(false);
     }
-  };
+  }, [BASE_URL, token, phraseQuery, phraseLimit, showToast]);
 
-  const fetchUsers = async (opts: { reset: boolean }) => {
+  const searchUsers = useCallback(async (pageToFetch: number, reset = false) => {
     const q = userSearchText.trim();
     if (!q) {
       showToast('Enter user search text', 'error', 2500);
       return;
     }
 
-    const nextPage = opts.reset ? 1 : userPage;
-
     try {
-      setUserLoading(true);
+      setSearchedUsersLoading(true);
+      setIsUserSearchMode(true);
 
       const url = `${BASE_URL}/user/userByName?search=${encodeURIComponent(
         q
-      )}&page=${nextPage}&limit=${userLimit}`;
+      )}&page=${pageToFetch}&limit=${userLimit}`;
 
       const res = await fetch(url, {
         method: 'GET',
@@ -176,15 +281,73 @@ export default function CreateExperiment() {
       const data = await res.json();
       const list: UserType[] = Array.isArray(data) ? data : [];
 
-      setUserResult((prev) => (opts.reset ? list : [...prev, ...list]));
-      setUserHasMore(list.length === userLimit);
-      setUserPage(nextPage + 1);
-    } catch (e) {
+      setSearchedUsers((prev) => (reset ? list : uniqueById([...prev, ...list])));
+      setSearchedUsersHasMore(list.length === userLimit);
+      setSearchedUsersPage(pageToFetch + 1);
+    } catch {
       showToast('User result not found', 'error', 3000);
-      setUserHasMore(false);
+      setSearchedUsersHasMore(false);
     } finally {
-      setUserLoading(false);
+      setSearchedUsersLoading(false);
     }
+  }, [BASE_URL, token, userSearchText, userLimit, showToast]);
+
+  useEffect(() => {
+    if (!token) return;
+    if (didInitialUsersFetchRef.current) return;
+    didInitialUsersFetchRef.current = true;
+    fetchAllUsers(1, true);
+  }, [token, fetchAllUsers]);
+
+  useEffect(() => {
+    if (!token) return;
+    if (didInitialPhrasesFetchRef.current) return;
+    didInitialPhrasesFetchRef.current = true;
+    fetchAllPhrases(1, true);
+  }, [token, fetchAllPhrases]);
+
+  const handlePhraseScroll = () => {
+    const el = phraseScrollRef.current;
+    if (!el || displayedPhraseLoading || !displayedPhraseHasMore) return;
+
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    if (isPhraseSearchMode) {
+      searchPhrases(searchedPhrasesPage, false);
+    } else {
+      fetchAllPhrases(allPhrasesPage, false);
+    }
+  };
+
+  const handleUserScroll = () => {
+    const el = userScrollRef.current;
+    if (!el || displayedUserLoading || !displayedUserHasMore) return;
+
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (!nearBottom) return;
+
+    if (isUserSearchMode) {
+      searchUsers(searchedUsersPage, false);
+    } else {
+      fetchAllUsers(allUsersPage, false);
+    }
+  };
+
+  const clearPhraseResults = () => {
+    setPhraseQuery('');
+    setIsPhraseSearchMode(false);
+    setSearchedPhrases([]);
+    setSearchedPhrasesPage(1);
+    setSearchedPhrasesHasMore(true);
+  };
+
+  const clearUserResults = () => {
+    setUserSearchText('');
+    setIsUserSearchMode(false);
+    setSearchedUsers([]);
+    setSearchedUsersPage(1);
+    setSearchedUsersHasMore(true);
   };
 
   const buildPayload = (): CreateExperimentPayload => ({
@@ -236,14 +399,13 @@ export default function CreateExperiment() {
 
       showToast('Experiment created', 'success', 2500);
 
-      // Reset form
       setExperimentName('');
       setExperimentCode('');
-      clearPhraseResults();
-      clearUserResults();
       setSelectedPhrases([]);
       setSelectedUsers([]);
-    } catch (e: any) {
+      clearPhraseResults();
+      clearUserResults();
+    } catch {
       showToast('Create experiment failed', 'error', 3000);
     } finally {
       setCreating(false);
@@ -282,7 +444,6 @@ export default function CreateExperiment() {
             <Box sx={{ height: 2, width: 220, bgcolor: 'black', mt: 1 }} />
           </Box>
 
-          {/* Basic fields */}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
             <TextField
               type="text"
@@ -305,11 +466,7 @@ export default function CreateExperiment() {
             />
           </Box>
 
-          <Box
-            ref={searchWrapperRef}
-            sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}
-          >
-            {/* Phrases */}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 1 }}>
             <Box>
               <Typography sx={{ fontSize: 18, fontWeight: 700, color: 'black' }}>
                 Search Phrases
@@ -323,11 +480,11 @@ export default function CreateExperiment() {
                   gap: 2,
                   alignItems: 'center',
                 }}
-                component={"form"}
+                component="form"
                 onSubmit={(e) => {
-                            e.preventDefault();
-                            fetchPhrases({ reset: true })
-                        }}
+                  e.preventDefault();
+                  searchPhrases(1, true);
+                }}
               >
                 <TextField
                   label="Search phrases"
@@ -339,11 +496,11 @@ export default function CreateExperiment() {
                 />
                 <Button
                   variant="contained"
-                  type='submit'
-                  disabled={phraseLoading}
+                  type="submit"
+                  disabled={searchedPhrasesLoading}
                   sx={{ height: 40 }}
                 >
-                  {phraseLoading ? 'Loading...' : 'Search'}
+                  {searchedPhrasesLoading && isPhraseSearchMode ? 'Loading...' : 'Search'}
                 </Button>
               </Box>
 
@@ -355,115 +512,142 @@ export default function CreateExperiment() {
                   gap: 2,
                 }}
               >
-                {/* Phrase Results */}
-                {phraseResult.length > 0 && (
-                  <Card
-                    variant="outlined"
+                <Card
+                  variant="outlined"
+                  sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 1,
+                    height: 260,
+                    overflowY: 'auto',
+                    position: 'relative',
+                  }}
+                  ref={phraseScrollRef}
+                  onScroll={handlePhraseScroll}
+                >
+                  <Box
                     sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
                       bgcolor: 'white',
-                      borderRadius: 2,
-                      p: 1,
-                      height: 220,
-                      overflowY: 'auto',
-                      position: 'relative',
-                    }}
-                  >
-                    <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearPhraseResults}>
-                      clear
-                    </Button>
-
-                    {phraseResult.map((phrase) => {
-                      const isSelected = selectedPhrases.some((p) => p.id === phrase.id);
-
-                      return (
-                        <Box
-                          key={phrase.id}
-                          sx={{
-                            px: 2,
-                            py: 1.5,
-                            mt: 0.5,
-                            cursor: isSelected ? 'not-allowed' : 'pointer',
-                            borderBottom: '1px solid #eee',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            opacity: isSelected ? 0.7 : 1,
-                          }}
-                          onClick={() => {
-                            if (!isSelected) addPhrase(phrase);
-                          }}
-                        >
-                          <Box>
-                            <Typography sx={{ color: 'black' }}>
-                              <b>Phrase</b>: {phrase.phrase}
-                            </Typography>
-                            <Typography sx={{ color: 'black', opacity: 0.8 }}>
-                              <b>Code</b>: {phrase.code}
-                            </Typography>
-                          </Box>
-
-                          {isSelected && (
-                            <Chip
-                              label="Selected"
-                              size="small"
-                              sx={{ borderRadius: 2, border: '1px solid #ccc', bgcolor: '#f2f2f2' }}
-                            />
-                          )}
-                        </Box>
-                      );
-                    })}
-
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-                      {phraseHasMore ? (
-                        <Button
-                          variant="outlined"
-                          onClick={() => fetchPhrases({ reset: false })}
-                          disabled={phraseLoading}
-                        >
-                          {phraseLoading ? 'Loading...' : 'Load more'}
-                        </Button>
-                      ) : (
-                        <Typography sx={{ color: 'black', opacity: 0.7 }}>End of results</Typography>
-                      )}
-                    </Box>
-                  </Card>
-                )}
-
-                {/* Selected Phrases */}
-                {selectedPhrases.length > 0 && (
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      bgcolor: 'white',
-                      borderRadius: 2,
-                      p: 2,
-                      height: 220,
-                      overflowY: 'auto',
+                      pb: 1,
+                      px: 1,
                       display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 1,
-                      alignContent: 'flex-start',
-                      position: 'relative',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid #eee',
                     }}
                   >
-                    <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearSelectedPhrases}>
-                      clear
-                    </Button>
+                    <Typography sx={{ color: 'black', fontWeight: 700, fontSize: 14 }}>
+                      {isPhraseSearchMode ? 'Phrase Search Results' : 'All Phrases'}
+                    </Typography>
+                    <Button onClick={clearPhraseResults}>clear</Button>
+                  </Box>
 
-                    {selectedPhrases.map((phrase) => (
+                  {allPhrasesInitialLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={28} />
+                    </Box>
+                  ) : displayedPhrases.length === 0 ? (
+                    <Typography sx={{ color: 'black', opacity: 0.7, textAlign: 'center', py: 4 }}>
+                      No phrases to display
+                    </Typography>
+                  ) : (
+                    <>
+                      {displayedPhrases.map((phrase) => {
+                        const isSelected = selectedPhrases.some((p) => p.id === phrase.id);
+
+                        return (
+                          <Box
+                            key={phrase.id}
+                            sx={{
+                              px: 2,
+                              py: 1.5,
+                              mt: 0.5,
+                              cursor: isSelected ? 'not-allowed' : 'pointer',
+                              borderBottom: '1px solid #eee',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              opacity: isSelected ? 0.7 : 1,
+                            }}
+                            onClick={() => {
+                              if (!isSelected) addPhrase(phrase);
+                            }}
+                          >
+                            <Box>
+                              <Typography sx={{ color: 'black' }}>
+                                <b>Phrase</b>: {phrase.phrase}
+                              </Typography>
+                              <Typography sx={{ color: 'black', opacity: 0.8 }}>
+                                <b>Code</b>: {phrase.code}
+                              </Typography>
+                            </Box>
+
+                            {isSelected && (
+                              <Chip
+                                label="Selected"
+                                size="small"
+                                sx={{ borderRadius: 2, border: '1px solid #ccc', bgcolor: '#f2f2f2' }}
+                              />
+                            )}
+                          </Box>
+                        );
+                      })}
+
+                      {displayedPhraseLoading && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      )}
+
+                      {!displayedPhraseHasMore && displayedPhrases.length > 0 && (
+                        <Typography sx={{ color: 'black', opacity: 0.7, textAlign: 'center', py: 1.5 }}>
+                          End of results
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Card>
+
+                <Card
+                  variant="outlined"
+                  sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 2,
+                    height: 260,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    alignContent: 'flex-start',
+                    position: 'relative',
+                  }}
+                >
+                  <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearSelectedPhrases}>
+                    clear
+                  </Button>
+
+                  {selectedPhrases.length === 0 ? (
+                    <Typography sx={{ color: 'black', opacity: 0.7 }}>
+                      No phrases selected
+                    </Typography>
+                  ) : (
+                    selectedPhrases.map((phrase) => (
                       <Chip
                         key={phrase.id}
                         label={phrase.code}
                         onDelete={() => handleRemovePhrase(phrase.id)}
                         sx={{ borderRadius: 2, border: '1px solid #ccc' }}
                       />
-                    ))}
-                  </Card>
-                )}
+                    ))
+                  )}
+                </Card>
               </Box>
             </Box>
 
-            {/* Users */}
             <Box>
               <Typography sx={{ fontSize: 18, fontWeight: 700, color: 'black' }}>
                 Search Users
@@ -477,10 +661,10 @@ export default function CreateExperiment() {
                   gap: 2,
                   alignItems: 'center',
                 }}
-                component={"form"}
+                component="form"
                 onSubmit={(e) => {
-                   e.preventDefault();
-                   fetchUsers({ reset: true })
+                  e.preventDefault();
+                  searchUsers(1, true);
                 }}
               >
                 <TextField
@@ -493,11 +677,11 @@ export default function CreateExperiment() {
                 />
                 <Button
                   variant="contained"
-                  type='submit'
-                  disabled={userLoading}
+                  type="submit"
+                  disabled={searchedUsersLoading}
                   sx={{ height: 40 }}
                 >
-                  {userLoading ? 'Loading...' : 'Search'}
+                  {searchedUsersLoading && isUserSearchMode ? 'Loading...' : 'Search'}
                 </Button>
               </Box>
 
@@ -509,101 +693,133 @@ export default function CreateExperiment() {
                   gap: 2,
                 }}
               >
-                {/* User Results */}
-                {userResult.length > 0 && (
-                  <Card
-                    variant="outlined"
+                <Card
+                  variant="outlined"
+                  sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 1,
+                    height: 260,
+                    overflowY: 'auto',
+                    position: 'relative',
+                  }}
+                  ref={userScrollRef}
+                  onScroll={handleUserScroll}
+                >
+                  <Box
                     sx={{
+                      position: 'sticky',
+                      top: 0,
+                      zIndex: 1,
                       bgcolor: 'white',
-                      borderRadius: 2,
-                      p: 1,
-                      height: 220,
-                      overflowY: 'auto',
-                      position: 'relative',
-                    }}
-                  >
-                    <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearUserResults}>
-                      clear
-                    </Button>
-
-                    {userResult.map((user) => {
-                      const isSelected = selectedUsers.some((u) => u.id === user.id);
-
-                      return (
-                        <Box
-                          key={user.id}
-                          sx={{
-                            px: 2,
-                            py: 1.5,
-                            mt: 0.5,
-                            cursor: isSelected ? 'not-allowed' : 'pointer',
-                            borderBottom: '1px solid #eee',
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            opacity: isSelected ? 0.7 : 1,
-                          }}
-                          onClick={() => {
-                            if (!isSelected) addUser(user);
-                          }}
-                        >
-                          <Box>
-                            <Typography sx={{ color: 'black' }}>
-                              <b>Name</b>: {user.firstName} {user.lastName}
-                            </Typography>
-                            <Typography sx={{ color: 'black', opacity: 0.8 }}>
-                              <b>Username</b>: {user.userName ?? '-'}
-                            </Typography>
-                            <Typography sx={{ color: 'black', opacity: 0.8 }}>
-                              <b>Email</b>: {user.email ?? '-'}
-                            </Typography>
-                          </Box>
-
-                          {isSelected && (
-                            <Chip
-                              label="Selected"
-                              size="small"
-                              sx={{ borderRadius: 2, border: '1px solid #ccc', bgcolor: '#f2f2f2' }}
-                            />
-                          )}
-                        </Box>
-                      );
-                    })}
-
-                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
-                      {userHasMore ? (
-                        <Button variant="outlined" onClick={() => fetchUsers({ reset: false })} disabled={userLoading}>
-                          {userLoading ? 'Loading...' : 'Load more'}
-                        </Button>
-                      ) : (
-                        <Typography sx={{ color: 'black', opacity: 0.7 }}>End of results</Typography>
-                      )}
-                    </Box>
-                  </Card>
-                )}
-
-                {/* Selected Users */}
-                {selectedUsers.length > 0 && (
-                  <Card
-                    variant="outlined"
-                    sx={{
-                      bgcolor: 'white',
-                      borderRadius: 2,
-                      p: 2,
-                      height: 220,
-                      overflowY: 'auto',
+                      pb: 1,
+                      px: 1,
                       display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 1,
-                      alignContent: 'flex-start',
-                      position: 'relative',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      borderBottom: '1px solid #eee',
                     }}
                   >
-                    <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearSelectedUsers}>
-                      clear
-                    </Button>
+                    <Typography sx={{ color: 'black', fontWeight: 700, fontSize: 14 }}>
+                      {isUserSearchMode ? 'User Search Results' : 'All Users'}
+                    </Typography>
+                    <Button onClick={clearUserResults}>clear</Button>
+                  </Box>
 
-                    {selectedUsers.map((user) => {
+                  {allUsersInitialLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}>
+                      <CircularProgress size={28} />
+                    </Box>
+                  ) : displayedUsers.length === 0 ? (
+                    <Typography sx={{ color: 'black', opacity: 0.7, textAlign: 'center', py: 4 }}>
+                      No users to display
+                    </Typography>
+                  ) : (
+                    <>
+                      {displayedUsers.map((user) => {
+                        const isSelected = selectedUsers.some((u) => u.id === user.id);
+
+                        return (
+                          <Box
+                            key={user.id}
+                            sx={{
+                              px: 2,
+                              py: 1.5,
+                              mt: 0.5,
+                              cursor: isSelected ? 'not-allowed' : 'pointer',
+                              borderBottom: '1px solid #eee',
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              opacity: isSelected ? 0.7 : 1,
+                            }}
+                            onClick={() => {
+                              if (!isSelected) addUser(user);
+                            }}
+                          >
+                            <Box>
+                              <Typography sx={{ color: 'black' }}>
+                                <b>Name</b>: {user.firstName} {user.lastName}
+                              </Typography>
+                              <Typography sx={{ color: 'black', opacity: 0.8 }}>
+                                <b>Username</b>: {user.userName ?? '-'}
+                              </Typography>
+                              <Typography sx={{ color: 'black', opacity: 0.8 }}>
+                                <b>Email</b>: {user.email ?? '-'}
+                              </Typography>
+                            </Box>
+
+                            {isSelected && (
+                              <Chip
+                                label="Selected"
+                                size="small"
+                                sx={{ borderRadius: 2, border: '1px solid #ccc', bgcolor: '#f2f2f2' }}
+                              />
+                            )}
+                          </Box>
+                        );
+                      })}
+
+                      {displayedUserLoading && (
+                        <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+                          <CircularProgress size={24} />
+                        </Box>
+                      )}
+
+                      {!displayedUserHasMore && displayedUsers.length > 0 && (
+                        <Typography sx={{ color: 'black', opacity: 0.7, textAlign: 'center', py: 1.5 }}>
+                          End of results
+                        </Typography>
+                      )}
+                    </>
+                  )}
+                </Card>
+
+                <Card
+                  variant="outlined"
+                  sx={{
+                    bgcolor: 'white',
+                    borderRadius: 2,
+                    p: 2,
+                    height: 260,
+                    overflowY: 'auto',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: 1,
+                    alignContent: 'flex-start',
+                    position: 'relative',
+                  }}
+                >
+                  <Button sx={{ position: 'absolute', top: 8, right: 8 }} onClick={clearSelectedUsers}>
+                    clear
+                  </Button>
+
+                  {selectedUsers.length === 0 ? (
+                    <Typography sx={{ color: 'black', opacity: 0.7 }}>
+                      No users selected
+                    </Typography>
+                  ) : (
+                    selectedUsers.map((user) => {
                       const label = user.userName ?? user.firstName;
 
                       if (!user.userName) {
@@ -631,24 +847,23 @@ export default function CreateExperiment() {
                           sx={{ borderRadius: 2, border: '1px solid #ccc' }}
                         />
                       );
-                    })}
-                  </Card>
-                )}
+                    })
+                  )}
+                </Card>
               </Box>
             </Box>
           </Box>
 
-          {/* Submit */}
           <Box sx={{ mt: 2, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
             <Button
               variant="outlined"
               onClick={() => {
                 setExperimentName('');
                 setExperimentCode('');
-                clearPhraseResults();
-                clearUserResults();
                 setSelectedPhrases([]);
                 setSelectedUsers([]);
+                clearPhraseResults();
+                clearUserResults();
               }}
               disabled={creating}
             >
