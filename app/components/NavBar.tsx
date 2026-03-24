@@ -18,6 +18,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import CreateIcon from '@mui/icons-material/Create';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
 
 const optionSelectedOrNot = {
     '&.Mui-selected': {
@@ -209,10 +210,22 @@ export default function NavBar() {
             {/**User Managament */}
 
             {/**Download center */}
-
+            {/** Download CSV */}
+            <ListItemButton
+                selected={pathName == '/downloadCsv'}
+                onClick={() => handleSelectOption('downloadCsv')}
+                sx={optionSelectedOrNot}
+            >
+                <ListItemIcon>
+                    <DownloadIcon
+                        sx={{ color: pathName == '/downloadCsv' ? 'black' : 'white' }}
+                    />
+                </ListItemIcon>
+                <ListItemText primary="Download CSV" />
+            </ListItemButton>
             {/**Help Center */}
 
-            
+
         </List>
     );
 }
