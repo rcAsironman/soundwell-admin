@@ -5,7 +5,7 @@ import React, { useEffect, useState } from "react"
 import Image from "next/image"
 import { useStore } from "@/store/useStore"
 import { useRouter } from "next/navigation"
-
+import leftImg from "@/public/sw-login-bg.jpg"
 
 
 
@@ -88,7 +88,7 @@ export default function Login() {
 
             >
                 <Image
-                    src="/sw-login-bg.jpg"
+                    src={leftImg}
                     alt="SoundWell Logo"
                     fill
                     style={{ objectFit: 'fill' }}
