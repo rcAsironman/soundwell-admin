@@ -221,7 +221,7 @@ export default function NavBar() {
                         sx={{ color: pathName == '/downloadCsv' ? 'black' : 'white' }}
                     />
                 </ListItemIcon>
-                <ListItemText primary="Download CS" />
+                <ListItemText primary="Download CSV" />
             </ListItemButton>
             {/**Help Center */}
 
