@@ -1,0 +1,21 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.FRONTEND_SERVER_HOST }}
+          username: ${{ secrets.FRONTEND_SERVER_USER }}
+          key: ${{ secrets.FRONTEND_SERVER_SSH_KEY }}
+          port: 22
+          script: |
+            /home/ubuntu/deploy-frontend.sh
